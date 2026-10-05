@@ -1,0 +1,537 @@
+# BRANDED EVENT PHOTO FRAME TOOL
+
+### Digital Engagement & Social Sharing Platform
+
+## 1. Project Overview
+
+The **Branded Event Photo Frame Tool** is a simple web-based platform that allows event organizers, brands, schools, communities, and campaigns to create a customized digital photo frame and share it with their audience through a single link.
+
+Users can open the shared link, upload their own photo, adjust it within the designated frame by **moving, zooming, and cropping**, and download the final high-quality branded image.
+
+The tool requires **no user account or complicated software installation**, making it easy for large audiences to participate during events and campaigns.
+
+---
+
+## 2. Project Objectives
+
+The platform aims to:
+
+* Increase audience engagement during events and campaigns.
+* Encourage participants to create and share branded content.
+* Provide an easy way for audiences to interact with an event or brand.
+* Increase organic visibility through social media sharing.
+* Give organizers a reusable digital tool for multiple events and campaigns.
+* Reduce the need for users to install mobile applications.
+* Create a simple and professional digital experience that can be accessed from any device.
+
+---
+
+# 3. How It Works
+
+### Step 1 — Organizer Creates a Frame
+
+The organizer logs into the admin dashboard and creates a new campaign/frame.
+
+They can:
+
+* Enter the campaign/event name.
+* Upload a transparent PNG frame.
+* Set the output image size.
+* Configure the photo area.
+* Publish the frame.
+
+Example:
+
+**Event:** MTF 2026
+**Canvas:** 1080 × 1350 px
+**Frame:** MTF2026.png
+
+---
+
+### Step 2 — Generate a Shareable Link
+
+After publishing, the system automatically creates a unique public link.
+
+Example:
+
+**eventframe.com/f/mtf2026**
+
+The organizer can share the link through:
+
+* QR Code
+* Facebook
+* Telegram
+* TikTok
+* Instagram
+* Website
+* Event screens
+* Printed promotional materials
+
+---
+
+### Step 3 — User Uploads Their Photo
+
+The user opens the link and sees the event's branded frame.
+
+They simply click:
+
+**Upload Photo**
+
+No account or registration is required.
+
+---
+
+### Step 4 — User Adjusts Their Photo
+
+The user can only perform the necessary editing actions:
+
+* **Move** the photo
+* **Zoom** the photo
+* **Crop** the photo
+* **Reset** the position
+
+The event frame remains fixed.
+
+This keeps the experience simple and prevents users from accidentally changing the branding.
+
+---
+
+### Step 5 — Download
+
+After the user is satisfied, they click:
+
+**Download Photo**
+
+The system combines:
+
+**User Photo + Event Frame**
+
+and generates a high-quality final image.
+
+Example:
+
+**1080 × 1350 px PNG/JPG**
+
+The user can immediately save and share it on social media.
+
+---
+
+# 4. Main Features
+
+## A. Admin Dashboard
+
+The administrator can manage all campaigns and frames from one dashboard.
+
+### Frame Management
+
+* Create new frame
+* Upload PNG frame
+* Edit frame information
+* Preview frame
+* Publish / Unpublish frame
+* Delete frame
+* Copy public link
+* Generate QR code
+
+### Campaign Information
+
+Each frame can contain:
+
+* Event name
+* Campaign name
+* Description
+* Frame image
+* Canvas size
+* Photo placement area
+* Public URL
+* Status
+
+---
+
+# 5. Public User Experience
+
+The public page should be extremely simple.
+
+### User Flow
+
+**Open Link**
+
+↓
+
+**Upload Photo**
+
+↓
+
+**Adjust Photo**
+
+* Move
+* Zoom
+* Crop
+
+↓
+
+**Preview**
+
+↓
+
+**Download HD**
+
+The user does not need:
+
+* Account
+* Login
+* Registration
+* App installation
+* Design knowledge
+
+---
+
+# 6. High-Quality Export
+
+The final image should maintain the original campaign's defined resolution.
+
+For example:
+
+### Social Media Portrait
+
+1080 × 1350 px
+
+### Instagram Story
+
+1080 × 1920 px
+
+### Square Post
+
+1080 × 1080 px
+
+### Custom Event Format
+
+Organizer-defined dimensions.
+
+The system should export the final image without unnecessarily reducing its quality.
+
+---
+
+# 7. Responsive Design
+
+The platform should work across:
+
+* Mobile phones
+* Tablets
+* Laptops
+* Desktop computers
+
+However, the experience should be **mobile-first**, because most event participants will access the tool using their phones.
+
+---
+
+# 8. QR Code Integration
+
+Each campaign can automatically generate a QR code.
+
+Example:
+
+**SCAN → UPLOAD → DOWNLOAD**
+
+The QR code can be placed on:
+
+* Event banners
+* Entrance signs
+* Booths
+* Tables
+* Stage screens
+* Event badges
+* Posters
+* Social media graphics
+
+This makes the tool especially useful for physical events.
+
+---
+
+# 9. Analytics
+
+The admin dashboard can provide basic campaign statistics.
+
+For example:
+
+| Metric          | Example |
+| --------------- | ------: |
+| Page Visits     |   5,280 |
+| Photos Uploaded |   2,140 |
+| Downloads       |   1,850 |
+| Conversion Rate |     35% |
+
+This allows organizers and brands to measure audience engagement.
+
+---
+
+# 10. Privacy Consideration
+
+The MVP should prioritize user privacy.
+
+The user's photo can be processed directly inside the browser whenever possible.
+
+This means:
+
+**User Photo → Browser → Frame → Final Image → Download**
+
+instead of unnecessarily uploading every photo to the server.
+
+If temporary server storage is required, uploaded images should have an automatic deletion policy.
+
+---
+
+# 11. Recommended Technology
+
+### Frontend
+
+* Vue.js or React
+* HTML5 Canvas
+* Responsive CSS
+* Touch gesture support
+
+### Backend
+
+* Node.js
+* Express.js
+* REST API
+* JWT authentication
+
+### Database
+
+* MySQL or MongoDB
+
+### Storage
+
+* Cloudflare R2 or similar object storage
+
+### Hosting
+
+* Cloudflare
+* VPS / Cloud hosting
+
+---
+
+# 12. Suggested System Structure
+
+```text
+                    ADMIN
+                      │
+                      ▼
+              Admin Dashboard
+                      │
+              Upload PNG Frame
+                      │
+                      ▼
+                 Campaign
+                      │
+               Generate Link
+                      │
+             Generate QR Code
+                      │
+                      ▼
+            PUBLIC USER PAGE
+                      │
+                      ▼
+                Upload Photo
+                      │
+                      ▼
+             Photo Editor
+          ┌──────────┼──────────┐
+          │          │          │
+        Move       Zoom       Crop
+          └──────────┼──────────┘
+                     │
+                     ▼
+              Frame + Photo
+                     │
+                     ▼
+               HD Export
+                     │
+                     ▼
+                  DOWNLOAD
+```
+
+---
+
+# 13. Target Users
+
+The platform can be used by:
+
+### Event Organizers
+
+For conferences, festivals, exhibitions, competitions, and community events.
+
+### Brands
+
+For product launches, campaigns, promotions, and activations.
+
+### Marketing Agencies
+
+As a reusable engagement tool for clients.
+
+### Schools & Universities
+
+For graduations, ceremonies, competitions, and student campaigns.
+
+### NGOs & Organizations
+
+For awareness campaigns and public activities.
+
+### Content Creators
+
+For branded community campaigns and online activities.
+
+---
+
+# 14. Business Opportunities
+
+The platform can eventually become a **SaaS product** rather than a one-time event tool.
+
+### Free / Basic
+
+* Limited frames
+* Limited campaigns
+* Standard export
+
+### Professional
+
+* Multiple campaigns
+* Custom branding
+* Analytics
+* Custom URLs
+* HD export
+* QR codes
+
+### Agency
+
+* Multiple clients
+* White-label experience
+* Advanced analytics
+* Custom domains
+* Unlimited campaigns
+
+The platform could also offer **one-time event packages** for organizations that only need the tool for a specific campaign.
+
+---
+
+# 15. MVP Scope
+
+The first version should focus only on the core experience.
+
+### Admin
+
+✅ Login
+✅ Create frame
+✅ Upload PNG
+✅ Configure canvas
+✅ Configure photo area
+✅ Publish frame
+✅ Generate share link
+✅ Generate QR code
+
+### User
+
+✅ Open public link
+✅ Upload photo
+✅ Move
+✅ Zoom
+✅ Crop
+✅ Preview
+✅ Download HD
+
+### Basic System
+
+✅ Mobile responsive
+✅ Multiple frames
+✅ Basic download counter
+✅ Basic privacy protection
+
+---
+
+# 16. Future Development
+
+After validating the MVP, additional features can be introduced:
+
+* Multiple frame templates
+* Text overlays
+* Stickers
+* Brand logos
+* Filters
+* AI background removal
+* AI photo enhancement
+* Social media sharing
+* Automatic Facebook/Telegram campaign integration
+* Advanced analytics
+* Custom domains
+* White-label platform
+* Event-specific landing pages
+* Photo gallery / public wall
+* Campaign leaderboard
+* Automatic hashtag suggestions
+
+These features should **not** be included in the first version unless there is a specific business requirement.
+
+---
+
+# 17. Key Value Proposition
+
+The platform turns a normal event photo into **branded, shareable content in seconds**.
+
+### For Users
+
+**Simple → Fast → No Account → High Quality**
+
+### For Organizers
+
+**Engagement → Branding → Social Sharing → Measurable Results**
+
+### Core Message
+
+> **Upload your photo. Fit the frame. Download. Share.**
+
+---
+
+# 18. Expected Impact
+
+The tool can help organizations transform passive event audiences into active participants.
+
+Instead of simply attending an event, users can create a personalized branded image and share it with their friends and followers.
+
+This creates a simple loop:
+
+**EVENT**
+
+↓
+
+**USER PARTICIPATION**
+
+↓
+
+**BRANDED PHOTO**
+
+↓
+
+**SOCIAL SHARING**
+
+↓
+
+**MORE PEOPLE SEE THE EVENT / BRAND**
+
+↓
+
+**MORE PARTICIPATION**
+
+---
+
+# 19. Conclusion
+
+The **Branded Event Photo Frame Tool** is designed to be a lightweight, scalable, and reusable digital engagement platform.
+
+Its strength is not complexity, but simplicity.
+
+Users only need to:
+
+**Open → Upload → Adjust → Download → Share**
+
+For organizers and brands, the platform provides a practical way to increase engagement, strengthen event branding, encourage social media participation, and measure campaign performance through a simple web experience.

@@ -1,0 +1,62 @@
+{
+  "camp_mtf2026": {
+    "visits": 5287,
+    "photosUploaded": 2141,
+    "downloads": 1851,
+    "history": [
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:02:17.254Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:02:17.270Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:02:23.970Z"
+      },
+      {
+        "event": "upload",
+        "timestamp": "2026-10-05T09:02:33.572Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:03:01.035Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:03:01.043Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:03:12.317Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:03:12.319Z"
+      },
+      {
+        "event": "download",
+        "timestamp": "2026-10-05T09:03:28.106Z"
+      }
+    ]
+  },
+  "camp_summerbeats": {
+    "visits": 3411,
+    "photosUploaded": 1680,
+    "downloads": 1420,
+    "history": [
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:02:22.326Z"
+      }
+    ]
+  },
+  "camp_aisummit": {
+    "visits": 2890,
+    "photosUploaded": 1220,
+    "downloads": 980,
+    "history": []
+  }
+}

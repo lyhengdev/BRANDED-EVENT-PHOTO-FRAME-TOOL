@@ -1,0 +1,16 @@
+{
+  "name": "branded-photo-frame-tool",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Digital Engagement & Social Sharing Branded Photo Frame Tool",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "build": "npm run build --prefix client",
+    "start": "node server/src/index.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.4"
+  }
+}
