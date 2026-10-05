@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, Sparkles, Check, Image as ImageIcon, Camera } from 'lucide-react';
 import { sound } from '../utils/soundEffects';
 
+import { optimizeTransparentFrame } from '../utils/imageOptimizer';
+
 const RESOLUTION_PRESETS = [
   { id: 'portrait', name: 'Portrait (4:5)', width: 1080, height: 1350, ratio: '4:5', desc: 'Instagram Feed & LinkedIn' },
   { id: 'square', name: 'Square (1:1)', width: 1080, height: 1080, ratio: '1:1', desc: 'Standard Feed & Avatars' },
@@ -64,31 +66,56 @@ export default function CreateCampaignModal({ isOpen, onClose, onCreated }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadedFile(file);
-    setUploadPreview(URL.createObjectURL(file));
-
-    const data = new FormData();
-    data.append('frameImage', file);
-
     try {
       setIsUploading(true);
       setError('');
+
+      // 1. Optimize transparent frame client-side to be well within Vercel's 4.5MB payload limit
+      const optimized = await optimizeTransparentFrame(
+        file,
+        formData.canvasWidth || 1080,
+        formData.canvasHeight || 1350
+      );
+
+      setUploadedFile(optimized.file);
+      setUploadPreview(optimized.dataUrl);
+
+      // Pre-set frameUrl to optimized dataUrl so the frame is immediately usable
+      setFormData((prev) => ({
+        ...prev,
+        frameType: 'uploaded',
+        frameUrl: optimized.dataUrl
+      }));
+
+      // 2. Upload optimized frame blob to backend
+      const data = new FormData();
+      data.append('frameImage', optimized.file);
+
       const res = await fetch('/api/upload/frame', {
         method: 'POST',
         body: data
       });
-      const result = await res.json();
-      if (res.ok && result.fileUrl) {
+
+      const contentType = res.headers.get('content-type') || '';
+      let result = null;
+      if (contentType.includes('application/json')) {
+        result = await res.json();
+      }
+
+      if (res.ok && result?.fileUrl) {
         setFormData((prev) => ({
           ...prev,
           frameType: 'uploaded',
           frameUrl: result.fileUrl
         }));
-      } else {
-        setError(result.error || 'Failed to upload frame');
+      } else if (!res.ok && !optimized.dataUrl) {
+        throw new Error(result?.error || `Upload failed with status ${res.status}`);
       }
     } catch (err) {
-      setError('Upload failed: ' + err.message);
+      console.warn('Frame upload note:', err.message);
+      if (!uploadPreview && !formData.frameUrl) {
+        setError('Upload failed: ' + err.message);
+      }
     } finally {
       setIsUploading(false);
     }
@@ -110,13 +137,20 @@ export default function CreateCampaignModal({ isOpen, onClose, onCreated }) {
         body: JSON.stringify(formData)
       });
 
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Failed to create campaign');
+      const contentType = res.headers.get('content-type') || '';
+      let result = null;
+      if (contentType.includes('application/json')) {
+        result = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(`Server returned ${res.status}: ${text.slice(0, 80) || res.statusText}`);
       }
 
-      const created = await res.json();
-      onCreated(created);
+      if (!res.ok) {
+        throw new Error(result?.error || 'Failed to create campaign');
+      }
+
+      onCreated(result);
       onClose();
     } catch (err) {
       setError(err.message);
