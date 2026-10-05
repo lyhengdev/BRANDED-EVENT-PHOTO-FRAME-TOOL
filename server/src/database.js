@@ -1,22 +1,9 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
+import { Campaign } from './models/Campaign.js';
+import { Analytics } from './models/Analytics.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, '../data');
-const CAMPAIGNS_FILE = path.join(DATA_DIR, 'campaigns.json');
-const ANALYTICS_FILE = path.join(DATA_DIR, 'analytics.json');
-
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-// Initial sample campaigns with beautiful pre-configured frames
 const SEED_CAMPAIGNS = [
   {
-    id: 'camp_mtf2026',
     slug: 'mtf2026',
     name: 'Modern Tech Frontier 2026',
     eventTitle: 'MTF 2026 Developer Summit',
@@ -28,7 +15,6 @@ const SEED_CAMPAIGNS = [
     aspectRatio: '4:5',
     themeColor: '#6366f1',
     accentColor: '#06b6d4',
-    // Pre-built frame overlay graphics or uploaded PNG URL
     frameType: 'preset',
     framePreset: 'tech-summit',
     frameUrl: '/presets/mtf2026-frame.png',
@@ -38,12 +24,9 @@ const SEED_CAMPAIGNS = [
       badgeText: 'DELEGATE',
       borderStyle: 'cyber-glow',
       bannerPosition: 'bottom'
-    },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    }
   },
   {
-    id: 'camp_summerbeats',
     slug: 'summerbeats2026',
     name: 'Summer Beats Music Fest',
     eventTitle: 'Summer Beats Fest 2026',
@@ -64,12 +47,9 @@ const SEED_CAMPAIGNS = [
       badgeText: 'VIP ACCESS',
       borderStyle: 'neon-gradient',
       bannerPosition: 'corners'
-    },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    }
   },
   {
-    id: 'camp_aisummit',
     slug: 'aisummit2026',
     name: 'Global AI Summit 2026',
     eventTitle: 'Global AI Summit • Story Edition',
@@ -90,88 +70,103 @@ const SEED_CAMPAIGNS = [
       badgeText: 'AI INNOVATOR',
       borderStyle: 'holographic',
       bannerPosition: 'full-border'
-    },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    }
   }
 ];
 
-const SEED_ANALYTICS = {
-  camp_mtf2026: {
-    visits: 5280,
-    photosUploaded: 2140,
-    downloads: 1850,
-    history: []
-  },
-  camp_summerbeats: {
-    visits: 3410,
-    photosUploaded: 1680,
-    downloads: 1420,
-    history: []
-  },
-  camp_aisummit: {
-    visits: 2890,
-    photosUploaded: 1220,
-    downloads: 980,
-    history: []
-  }
-};
-
-function readJsonFile(filePath, defaultData) {
+export async function connectDB(mongoUri) {
   try {
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, JSON.stringify(defaultData, null, 2), 'utf-8');
-      return defaultData;
+    const uri = mongoUri || process.env.MONGODB_URI;
+    if (!uri) {
+      throw new Error('MONGODB_URI is not defined in environment variables.');
     }
-    const content = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(content);
+
+    mongoose.connection.on('connected', () => {
+      console.log('🍃 MongoDB Atlas: Connected successfully.');
+    });
+
+    mongoose.connection.on('error', (err) => {
+      console.error('❌ MongoDB Atlas connection error:', err.message);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.warn('⚠️  MongoDB Atlas: Connection disconnected.');
+    });
+
+    await mongoose.connect(uri, {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000
+    });
+
+    // Auto-seed initial campaigns if database is fresh
+    await seedInitialData();
+
+    return true;
   } catch (err) {
-    console.error(`Error reading ${filePath}:`, err);
-    return defaultData;
+    console.error('Failed to initialize MongoDB Atlas connection:', err.message);
+    throw err;
   }
 }
 
-function writeJsonFile(filePath, data) {
+async function seedInitialData() {
   try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    console.error(`Error writing ${filePath}:`, err);
+    const count = await Campaign.countDocuments();
+    if (count === 0) {
+      console.log('🌱 Seeding default initial event campaigns into MongoDB Atlas...');
+      for (const item of SEED_CAMPAIGNS) {
+        const created = await Campaign.create(item);
+        await Analytics.create({
+          campaignId: created._id.toString(),
+          visits: item.slug === 'mtf2026' ? 5280 : item.slug === 'summerbeats2026' ? 3410 : 2890,
+          photosUploaded: item.slug === 'mtf2026' ? 2140 : item.slug === 'summerbeats2026' ? 1680 : 1220,
+          downloads: item.slug === 'mtf2026' ? 1850 : item.slug === 'summerbeats2026' ? 1420 : 980,
+          history: []
+        });
+      }
+      console.log('✓ MongoDB Atlas seeding completed successfully.');
+    }
+  } catch (e) {
+    console.error('Warning during MongoDB seeding:', e.message);
   }
 }
 
 export const db = {
-  getCampaigns() {
-    return readJsonFile(CAMPAIGNS_FILE, SEED_CAMPAIGNS);
+  async getCampaigns() {
+    const list = await Campaign.find({ status: { $ne: 'archived' } }).sort({ createdAt: -1 });
+    return list.map(c => c.toJSON());
   },
 
-  getCampaignById(id) {
-    const list = this.getCampaigns();
-    return list.find((c) => c.id === id || c.slug === id);
+  async getCampaignById(idOrSlug) {
+    let doc = null;
+    if (mongoose.Types.ObjectId.isValid(idOrSlug)) {
+      doc = await Campaign.findById(idOrSlug);
+    }
+    if (!doc) {
+      doc = await Campaign.findOne({ slug: idOrSlug.toLowerCase() });
+    }
+    return doc ? doc.toJSON() : null;
   },
 
-  getCampaignBySlug(slug) {
-    const list = this.getCampaigns();
-    return list.find((c) => c.slug.toLowerCase() === slug.toLowerCase());
+  async getCampaignBySlug(slug) {
+    const doc = await Campaign.findOne({ slug: slug.toLowerCase() });
+    return doc ? doc.toJSON() : null;
   },
 
-  createCampaign(campaignData) {
-    const list = this.getCampaigns();
-    const id = 'camp_' + Date.now();
-    const slug = (campaignData.slug || campaignData.name || 'campaign')
+  async createCampaign(campaignData) {
+    const rawSlug = (campaignData.slug || campaignData.name || 'campaign')
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || `frame-${Date.now()}`;
 
     // Verify slug uniqueness
-    let finalSlug = slug;
+    let finalSlug = rawSlug;
     let counter = 1;
-    while (list.some((c) => c.slug === finalSlug)) {
-      finalSlug = `${slug}-${counter++}`;
+    while (await Campaign.exists({ slug: finalSlug })) {
+      finalSlug = `${rawSlug}-${counter++}`;
     }
 
-    const newCampaign = {
-      id,
+    const newCampaign = await Campaign.create({
       slug: finalSlug,
       name: campaignData.name || 'Untitled Campaign',
       eventTitle: campaignData.eventTitle || campaignData.name || 'Event Photo Frame',
@@ -184,87 +179,94 @@ export const db = {
       themeColor: campaignData.themeColor || '#6366f1',
       accentColor: campaignData.accentColor || '#38bdf8',
       frameType: campaignData.frameType || 'uploaded',
+      framePreset: campaignData.framePreset || 'tech-summit',
       frameUrl: campaignData.frameUrl || '',
-      frameMeta: campaignData.frameMeta || {},
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+      frameMeta: campaignData.frameMeta || {}
+    });
 
-    list.unshift(newCampaign);
-    writeJsonFile(CAMPAIGNS_FILE, list);
+    const json = newCampaign.toJSON();
 
-    // Initialize analytics entry
-    const analytics = readJsonFile(ANALYTICS_FILE, SEED_ANALYTICS);
-    analytics[id] = { visits: 0, photosUploaded: 0, downloads: 0, history: [] };
-    writeJsonFile(ANALYTICS_FILE, analytics);
+    // Create corresponding analytics record
+    await Analytics.create({
+      campaignId: json.id,
+      visits: 0,
+      photosUploaded: 0,
+      downloads: 0,
+      history: []
+    });
 
-    return newCampaign;
+    return json;
   },
 
-  updateCampaign(id, updateData) {
-    const list = this.getCampaigns();
-    const index = list.findIndex((c) => c.id === id);
-    if (index === -1) return null;
+  async updateCampaign(id, updateData) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      const bySlug = await Campaign.findOne({ slug: id });
+      if (bySlug) id = bySlug._id;
+      else return null;
+    }
 
-    list[index] = {
-      ...list[index],
-      ...updateData,
-      id: list[index].id, // protect id
-      updatedAt: new Date().toISOString()
-    };
-
-    writeJsonFile(CAMPAIGNS_FILE, list);
-    return list[index];
+    const updated = await Campaign.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { returnDocument: 'after', runValidators: true }
+    );
+    return updated ? updated.toJSON() : null;
   },
 
-  deleteCampaign(id) {
-    const list = this.getCampaigns();
-    const filtered = list.filter((c) => c.id !== id);
-    if (filtered.length === list.length) return false;
+  async deleteCampaign(id) {
+    let filter = { _id: id };
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      filter = { slug: id };
+    }
 
-    writeJsonFile(CAMPAIGNS_FILE, filtered);
+    const deleted = await Campaign.findOneAndDelete(filter);
+    if (!deleted) return false;
 
-    // Remove analytics
-    const analytics = readJsonFile(ANALYTICS_FILE, SEED_ANALYTICS);
-    delete analytics[id];
-    writeJsonFile(ANALYTICS_FILE, analytics);
-
+    await Analytics.deleteMany({ campaignId: deleted._id.toString() });
     return true;
   },
 
-  recordAnalytics(campaignId, eventType) {
-    const analytics = readJsonFile(ANALYTICS_FILE, SEED_ANALYTICS);
-    if (!analytics[campaignId]) {
-      analytics[campaignId] = { visits: 0, photosUploaded: 0, downloads: 0, history: [] };
+  async recordAnalytics(campaignId, eventType) {
+    const incField = 
+      eventType === 'visit' ? 'visits' : 
+      eventType === 'upload' || eventType === 'photo_upload' ? 'photosUploaded' : 
+      eventType === 'download' ? 'downloads' : null;
+
+    const update = {
+      $push: {
+        history: {
+          $each: [{ event: eventType, timestamp: new Date() }],
+          $slice: -100 // retain latest 100 entries
+        }
+      }
+    };
+
+    if (incField) {
+      update.$inc = { [incField]: 1 };
     }
 
-    if (eventType === 'visit') {
-      analytics[campaignId].visits = (analytics[campaignId].visits || 0) + 1;
-    } else if (eventType === 'upload' || eventType === 'photo_upload') {
-      analytics[campaignId].photosUploaded = (analytics[campaignId].photosUploaded || 0) + 1;
-    } else if (eventType === 'download') {
-      analytics[campaignId].downloads = (analytics[campaignId].downloads || 0) + 1;
-    }
+    const stat = await Analytics.findOneAndUpdate(
+      { campaignId },
+      update,
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+    );
 
-    // Keep lightweight log
-    if (!analytics[campaignId].history) analytics[campaignId].history = [];
-    analytics[campaignId].history.push({
-      event: eventType,
-      timestamp: new Date().toISOString()
-    });
-
-    // Keep last 100 events
-    if (analytics[campaignId].history.length > 100) {
-      analytics[campaignId].history = analytics[campaignId].history.slice(-100);
-    }
-
-    writeJsonFile(ANALYTICS_FILE, analytics);
-    return analytics[campaignId];
+    return stat.toJSON();
   },
 
-  getAnalytics(campaignId) {
-    const analytics = readJsonFile(ANALYTICS_FILE, SEED_ANALYTICS);
-    const data = analytics[campaignId] || { visits: 0, photosUploaded: 0, downloads: 0, history: [] };
+  async getAnalytics(campaignId) {
+    let stat = await Analytics.findOne({ campaignId });
+    if (!stat) {
+      stat = await Analytics.create({
+        campaignId,
+        visits: 0,
+        photosUploaded: 0,
+        downloads: 0,
+        history: []
+      });
+    }
+
+    const data = stat.toJSON();
     const conversionRate = data.visits > 0 ? ((data.downloads / data.visits) * 100).toFixed(1) + '%' : '0%';
     return {
       ...data,
@@ -272,27 +274,34 @@ export const db = {
     };
   },
 
-  getAllAnalyticsSummary() {
-    const campaigns = this.getCampaigns();
-    const analytics = readJsonFile(ANALYTICS_FILE, SEED_ANALYTICS);
+  async getAllAnalyticsSummary() {
+    const campaigns = await Campaign.find({ status: { $ne: 'archived' } }).sort({ createdAt: -1 });
+    const statsList = await Analytics.find();
+
+    const statsMap = new Map();
+    for (const s of statsList) {
+      statsMap.set(s.campaignId, s);
+    }
 
     let totalVisits = 0;
     let totalUploads = 0;
     let totalDownloads = 0;
 
     const items = campaigns.map((camp) => {
-      const stat = analytics[camp.id] || { visits: 0, photosUploaded: 0, downloads: 0 };
-      totalVisits += stat.visits || 0;
-      totalUploads += stat.photosUploaded || 0;
-      totalDownloads += stat.downloads || 0;
-      const rate = stat.visits > 0 ? (((stat.downloads || 0) / stat.visits) * 100).toFixed(1) : 0;
+      const campId = camp._id.toString();
+      const s = statsMap.get(campId) || { visits: 0, photosUploaded: 0, downloads: 0 };
+      totalVisits += s.visits || 0;
+      totalUploads += s.photosUploaded || 0;
+      totalDownloads += s.downloads || 0;
+
+      const rate = s.visits > 0 ? (((s.downloads || 0) / s.visits) * 100).toFixed(1) : 0;
       return {
-        campaignId: camp.id,
+        campaignId: campId,
         name: camp.name,
         slug: camp.slug,
-        visits: stat.visits || 0,
-        photosUploaded: stat.photosUploaded || 0,
-        downloads: stat.downloads || 0,
+        visits: s.visits || 0,
+        photosUploaded: s.photosUploaded || 0,
+        downloads: s.downloads || 0,
         conversionRate: `${rate}%`
       };
     });

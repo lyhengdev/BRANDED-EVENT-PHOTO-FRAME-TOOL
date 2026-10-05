@@ -1,10 +1,11 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { db } from './database.js';
+import { connectDB, db } from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,18 +58,22 @@ const upload = multer({
 
 // Health Check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    database: 'MongoDB Atlas',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Admin Authentication (Username & Passcode)
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || 'frame2026';
+const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '2026';
 
 app.post('/api/auth/login', (req, res) => {
   const { username, passcode } = req.body;
   if (
     (username?.trim().toLowerCase() === ADMIN_USER.toLowerCase() || username?.trim() === 'operator') &&
-    (passcode === ADMIN_PASSCODE || passcode === '2026' || passcode === 'admin123')
+    (passcode === ADMIN_PASSCODE || passcode === '2026' || passcode === 'frame2026')
   ) {
     const token = 'token_' + Buffer.from(`${username}:${Date.now()}`).toString('base64');
     return res.json({
@@ -103,9 +108,9 @@ app.post('/api/upload/frame', upload.single('frameImage'), (req, res) => {
 });
 
 // List all campaigns
-app.get('/api/campaigns', (req, res) => {
+app.get('/api/campaigns', async (req, res) => {
   try {
-    const campaigns = db.getCampaigns();
+    const campaigns = await db.getCampaigns();
     res.json(campaigns);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -113,12 +118,12 @@ app.get('/api/campaigns', (req, res) => {
 });
 
 // Get campaign by slug or ID
-app.get('/api/campaigns/:idOrSlug', (req, res) => {
+app.get('/api/campaigns/:idOrSlug', async (req, res) => {
   try {
     const { idOrSlug } = req.params;
-    let campaign = db.getCampaignBySlug(idOrSlug);
+    let campaign = await db.getCampaignBySlug(idOrSlug);
     if (!campaign) {
-      campaign = db.getCampaignById(idOrSlug);
+      campaign = await db.getCampaignById(idOrSlug);
     }
     if (!campaign) {
       return res.status(404).json({ error: 'Campaign frame not found' });
@@ -130,9 +135,9 @@ app.get('/api/campaigns/:idOrSlug', (req, res) => {
 });
 
 // Create campaign
-app.post('/api/campaigns', (req, res) => {
+app.post('/api/campaigns', async (req, res) => {
   try {
-    const campaign = db.createCampaign(req.body);
+    const campaign = await db.createCampaign(req.body);
     res.status(201).json(campaign);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -140,9 +145,9 @@ app.post('/api/campaigns', (req, res) => {
 });
 
 // Update campaign
-app.put('/api/campaigns/:id', (req, res) => {
+app.put('/api/campaigns/:id', async (req, res) => {
   try {
-    const updated = db.updateCampaign(req.params.id, req.body);
+    const updated = await db.updateCampaign(req.params.id, req.body);
     if (!updated) {
       return res.status(404).json({ error: 'Campaign not found' });
     }
@@ -153,9 +158,9 @@ app.put('/api/campaigns/:id', (req, res) => {
 });
 
 // Delete campaign
-app.delete('/api/campaigns/:id', (req, res) => {
+app.delete('/api/campaigns/:id', async (req, res) => {
   try {
-    const success = db.deleteCampaign(req.params.id);
+    const success = await db.deleteCampaign(req.params.id);
     if (!success) {
       return res.status(404).json({ error: 'Campaign not found' });
     }
@@ -166,13 +171,13 @@ app.delete('/api/campaigns/:id', (req, res) => {
 });
 
 // Track analytics event (visit, upload, download)
-app.post('/api/campaigns/:id/analytics', (req, res) => {
+app.post('/api/campaigns/:id/analytics', async (req, res) => {
   try {
-    const { eventType } = req.body; // 'visit' | 'upload' | 'download'
+    const { eventType } = req.body;
     if (!eventType) {
       return res.status(400).json({ error: 'eventType is required' });
     }
-    const stat = db.recordAnalytics(req.params.id, eventType);
+    const stat = await db.recordAnalytics(req.params.id, eventType);
     res.json({ success: true, stat });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -180,9 +185,9 @@ app.post('/api/campaigns/:id/analytics', (req, res) => {
 });
 
 // Get campaign analytics
-app.get('/api/campaigns/:id/analytics', (req, res) => {
+app.get('/api/campaigns/:id/analytics', async (req, res) => {
   try {
-    const data = db.getAnalytics(req.params.id);
+    const data = await db.getAnalytics(req.params.id);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -190,15 +195,38 @@ app.get('/api/campaigns/:id/analytics', (req, res) => {
 });
 
 // Global analytics overview
-app.get('/api/analytics/overview', (req, res) => {
+app.get('/api/analytics/overview', async (req, res) => {
   try {
-    const summary = db.getAllAnalyticsSummary();
+    const summary = await db.getAllAnalyticsSummary();
     res.json(summary);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Branded Frame API Server listening on port ${PORT}`);
-});
+// Production: Serve built frontend from client/dist if available
+const CLIENT_DIST = path.join(__dirname, '../../client/dist');
+if (fs.existsSync(CLIENT_DIST)) {
+  app.use(express.static(CLIENT_DIST));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/presets')) {
+      return next();
+    }
+    res.sendFile(path.join(CLIENT_DIST, 'index.html'));
+  });
+}
+
+// Start Server with MongoDB Atlas Connection
+async function startServer() {
+  try {
+    await connectDB();
+    app.listen(PORT, () => {
+      console.log(`🚀 Production API Server listening on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error('Failed to start server:', err.message);
+    process.exit(1);
+  }
+}
+
+startServer();

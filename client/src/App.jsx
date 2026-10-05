@@ -7,78 +7,10 @@ import QRCodeModal from './components/QRCodeModal';
 import ConsoleAuthModal from './components/ConsoleAuthModal';
 import { sound } from './utils/soundEffects';
 
-const DEFAULT_CAMPAIGNS = [
-  {
-    id: 'camp_mtf2026',
-    slug: 'mtf2026',
-    name: 'Modern Tech Frontier 2026',
-    eventTitle: 'MTF 2026 Developer Summit',
-    description: 'Create your official attendee badge & photo frame. Share with #MTF2026!',
-    tagline: 'Connecting Builders of the Next Era',
-    status: 'published',
-    canvasWidth: 1080,
-    canvasHeight: 1350,
-    aspectRatio: '4:5',
-    themeColor: '#6366f1',
-    accentColor: '#06b6d4',
-    frameType: 'preset',
-    framePreset: 'tech-summit',
-    frameMeta: {
-      headline: 'MODERN TECH FRONTIER 2026',
-      subline: 'OFFICIAL ATTENDEE • SAN FRANCISCO, CA',
-      badgeText: 'DELEGATE',
-      borderStyle: 'cyber-glow'
-    }
-  },
-  {
-    id: 'camp_summerbeats',
-    slug: 'summerbeats2026',
-    name: 'Summer Beats Music Fest',
-    eventTitle: 'Summer Beats Fest 2026',
-    description: 'Get your festival vibe on! Frame your party moment and share.',
-    tagline: 'Feel the Sound • Live the Moment',
-    status: 'published',
-    canvasWidth: 1080,
-    canvasHeight: 1080,
-    aspectRatio: '1:1',
-    themeColor: '#ec4899',
-    accentColor: '#f59e0b',
-    frameType: 'preset',
-    framePreset: 'neon-fest',
-    frameMeta: {
-      headline: 'SUMMER BEATS 2026',
-      subline: 'LIVE AT GOLDEN GATE PARK',
-      badgeText: 'VIP ACCESS',
-      borderStyle: 'neon-gradient'
-    }
-  },
-  {
-    id: 'camp_aisummit',
-    slug: 'aisummit2026',
-    name: 'Global AI Summit 2026',
-    eventTitle: 'Global AI Summit • Story Edition',
-    description: 'Vertical story frame for Instagram & TikTok. Share your conference highlights!',
-    tagline: 'Intelligence Unleashed',
-    status: 'published',
-    canvasWidth: 1080,
-    canvasHeight: 1920,
-    aspectRatio: '9:16',
-    themeColor: '#8b5cf6',
-    accentColor: '#10b981',
-    frameType: 'preset',
-    framePreset: 'ai-story',
-    frameMeta: {
-      headline: 'GLOBAL AI SUMMIT',
-      subline: 'OCTOBER 2026 • KEYNOTE ATTENDEE',
-      badgeText: 'AI INNOVATOR',
-      borderStyle: 'holographic'
-    }
-  }
-];
-
 export default function App() {
-  const [campaigns, setCampaigns] = useState(DEFAULT_CAMPAIGNS);
-  const [currentCampaign, setCurrentCampaign] = useState(DEFAULT_CAMPAIGNS[0]);
+  const [campaigns, setCampaigns] = useState([]);
+  const [currentCampaign, setCurrentCampaign] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState('attendee'); // 'attendee' | 'admin'
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -103,15 +35,15 @@ export default function App() {
           }
         })
         .catch(() => {
-          // If offline/error, retain local session if present
           setIsAuthenticated(true);
         });
     }
   }, []);
 
-  // Fetch campaigns from backend
+  // Fetch campaigns from MongoDB backend
   const fetchCampaigns = async () => {
     try {
+      setLoading(true);
       const res = await fetch('/api/campaigns');
       if (res.ok) {
         const data = await res.json();
@@ -131,7 +63,9 @@ export default function App() {
         }
       }
     } catch (e) {
-      console.warn('API server connection: using local fallback campaigns.');
+      console.error('Failed to load campaigns from MongoDB:', e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -200,7 +134,28 @@ export default function App() {
       />
 
       <main style={{ flex: 1 }}>
-        {currentView === 'attendee' && currentCampaign ? (
+        {loading ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '60vh',
+            gap: 16
+          }}>
+            <div className="camera-chassis" style={{ padding: '24px 32px', textAlign: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8 }}>
+                <span className="led-jewel led-amber" />
+                <span className="engraved-light" style={{ fontSize: '1rem' }}>
+                  CONNECTING TO OPTICAL CLOUD...
+                </span>
+              </div>
+              <p className="engraved-text" style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                INITIALIZING MONGODB ATLAS TELEMETRY
+              </p>
+            </div>
+          </div>
+        ) : currentView === 'attendee' && currentCampaign ? (
           <CanvasEditor
             campaign={currentCampaign}
             campaigns={campaigns}

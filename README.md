@@ -14,11 +14,20 @@
                        ┌───────────────────────┴────────────────────────┐
                        ▼                                                ▼
          ┌───────────────────────────┐                    ┌───────────────────────────┐
-         │     Admin Dashboard       │                    │   Campaign & Frame Studio │
-         │ • Engagement Analytics    │                    │ • Upload Transparent PNG  │
-         │ • QR Code Generator       │                    │ • Set 4:5, 1:1, 9:16 Res  │
-         │ • Multi-campaign Manager  │                    │ • Instant Slug URL        │
-         └───────────────────────────┘                    └───────────────────────────┘
+         │  Operator Control Console │                    │   Campaign & Frame Studio │
+         │ • Engagement Telemetry    │                    │ • Upload Transparent PNG  │
+         │ • Security Passcode Lock  │                    │ • Set 4:5, 1:1, 9:16 Res  │
+         │ • High-Res QR Generator   │                    │ • Auto-Indexed Mongo Slugs│
+         └─────────────┬─────────────┘                    └─────────────┬─────────────┘
+                       │                                                │
+                       └───────────────────────┬────────────────────────┘
+                                               │
+                                               ▼
+                              ┌──────────────────────────────────┐
+                              │     MONGODB ATLAS CLOUD DB       │
+                              │ • Campaigns & Event Metadata     │
+                              │ • Live Telemetry & Event Stream  │
+                              └────────────────┬─────────────────┘
                                                │
                                                ▼
                               ┌──────────────────────────────────┐
@@ -29,11 +38,11 @@
                        ┌───────────────────────┴────────────────────────┐
                        ▼                                                ▼
          ┌───────────────────────────┐                    ┌───────────────────────────┐
-         │   Client-Side Photo Edit  │                    │    Instant HD Compositing │
+         │   Tactile Camera View     │                    │    Instant HD Compositing │
          │ • Pan / Drag / Move       │                    │ • HTML5 Canvas rendering  │
-         │ • Pinch / Mouse Zoom      │                    │ • Fixed overlay lock      │
+         │ • Pinch / Rotary Dial Zoom│                    │ • Studio Color Grading    │
          │ • Rotate 90° & Flip       │                    │ • Full 1080p+ HD Export   │
-         │ • 100% In-Browser Privacy │                    │ • Download & Social Share │
+         │ • 100% In-Browser Privacy │                    │ • Audio Shutter Feedback  │
          └───────────────────────────┘                    └───────────────────────────┘
 ```
 
@@ -43,100 +52,93 @@
 
 ```
 Branded Photo frame tool/
-├── proposal.txt              # Original product proposal and requirements
-├── package.json              # Monorepo runner scripts (concurrently)
-├── README.md                 # Project architecture & setup documentation
+├── package.json              # Root monorepo script runner
+├── README.md                 # Architecture & setup documentation
+├── .gitignore                # Protects secrets & node_modules
 │
-├── client/                   # Frontend Web Application (Vite + React)
-│   ├── index.html            # App entry point with Google Fonts & SEO meta
-│   ├── vite.config.js        # Dev server proxy (/api, /uploads -> backend)
-│   ├── package.json          # React, Lucide Icons, QR Code, Confetti
+├── client/                   # Frontend Web Application (Vite + React + Framer Motion)
+│   ├── index.html            # Google Fonts & SEO meta
+│   ├── vite.config.js        # Proxy configuration (/api -> backend)
+│   ├── package.json          # React 19, Framer Motion, Lucide Icons, QR Code
 │   └── src/
-│       ├── main.jsx          # React DOM root mounting
-│       ├── App.jsx           # Main state, view router & modals
-│       ├── index.css         # Modern design system (dark glassmorphism)
+│       ├── main.jsx          # DOM root mount
+│       ├── App.jsx           # App state, MongoDB cloud loader & routing
+│       ├── index.css         # Skeuomorphic design system (chassis, dials, LEDs)
 │       ├── components/
-│       │   ├── Navbar.jsx              # Mode switcher (Attendee vs Admin)
-│       │   ├── CanvasEditor.jsx        # Touch & mouse photo editor
-│       │   ├── AdminDashboard.jsx      # Analytics KPIs & campaign manager
-│       │   ├── CreateCampaignModal.jsx # New event setup & PNG upload
-│       │   └── QRCodeModal.jsx         # Live QR Code & printable badge
+│       │   ├── Navbar.jsx              # Mode switch, audio toggle & operator lock
+│       │   ├── CanvasEditor.jsx        # Virtual Leica camera viewfinder & controls
+│       │   ├── AdminDashboard.jsx      # Telemetry gauges & frame channel rack
+│       │   ├── ConsoleAuthModal.jsx    # Numeric tactile passcode lockbox
+│       │   ├── CreateCampaignModal.jsx # Campaign deployment studio
+│       │   └── QRCodeModal.jsx         # High-res optical QR badge print preview
 │       └── utils/
-│           └── frameRenderer.js        # High-res canvas compositing engine
+│           ├── frameRenderer.js        # High-res canvas compositing & color grading
+│           └── soundEffects.js         # Zero-latency Web Audio physical synthesizer
 │
-└── server/                   # Backend REST API (Node.js + Express)
-    ├── package.json          # Express, Cors, Multer
+└── server/                   # Backend REST API (Node.js + Express + Mongoose)
+    ├── .env                  # MongoDB Atlas connection & security config
+    ├── .env.example          # Environment template for production deployments
+    ├── package.json          # Express, Mongoose, Multer, Dotenv
     ├── uploads/              # Storage directory for custom PNG frames
-    ├── data/                 # File-based database (campaigns & analytics)
-    │   ├── campaigns.json
-    │   └── analytics.json
     └── src/
-        ├── index.js          # REST endpoints, static file server
-        └── database.js       # Persistent JSON store & analytics counter
+        ├── index.js          # REST endpoints, static production file server
+        ├── database.js       # Production MongoDB Atlas connection & auto-seeding
+        └── models/
+            ├── Campaign.js   # Mongoose Campaign schema & validation
+            └── Analytics.js  # Mongoose Telemetry schema & atomic counters
 ```
 
 ---
 
-## 🚀 Getting Started
+## 🍃 MongoDB Atlas Configuration
 
-### 1. Install Dependencies
-Run from the root directory:
-```bash
-npm install
-npm run build --prefix client
+The application is fully connected to **MongoDB Atlas**. Configuration is managed in `server/.env`:
+
+```env
+PORT=5001
+NODE_ENV=production
+
+# MongoDB Atlas Cluster Connection
+MONGODB_URI=mongodb+srv://lyhengdev_db_user:t6cjUYSZ6xkjXN7J@cluster0.kgxsvma.mongodb.net/branded_photo_frame?retryWrites=true&w=majority
+
+# Operator Security Credentials
+ADMIN_USER=admin
+ADMIN_PASSCODE=2026
 ```
 
-### 2. Start Development Servers
-Run both backend and frontend concurrently:
+---
+
+## 🚀 Running the Project
+
+### Development Mode
 ```bash
+# Run both frontend and backend concurrently
 npm run dev
+
+# Or separately:
+npm run dev:server   # Starts Express backend on port 5001
+npm run dev:client   # Starts Vite React frontend on port 3001
 ```
 
-Or run them individually:
+### Production Deployment
+The application is pre-configured to build into a standalone production service. The Express backend serves the optimized client bundle:
+
 ```bash
-# Start backend API (Port 5001)
-npm run dev:server
+# 1. Build the production frontend bundle
+npm run build
 
-# Start Vite React frontend (Port 3001)
-npm run dev:client
+# 2. Start the production fullstack server
+npm start
 ```
 
-Open your browser at:
-- **Frontend App**: [http://localhost:3001](http://localhost:3001)
-- **Backend API**: [http://localhost:5001/api/health](http://localhost:5001/api/health)
+Access the application in production at:
+- **Full App**: `http://localhost:5001/`
+- **API Health Check**: `http://localhost:5001/api/health`
 
 ---
 
-## 🌟 Key Features
+## 🔐 Operator Security Credentials
 
-1. **Attendee Photo Experience (Zero Signup)**:
-   - Works immediately on mobile or desktop without creating an account or installing apps.
-   - Smooth touch gestures: Pinch-to-zoom, drag-to-pan, mouse wheel zooming, rotate 90°, and flip horizontal.
-   - Instant export of full-resolution 1080p+ composite images.
-   - Web Share API integration for one-tap sharing to Instagram, TikTok, Facebook, and Telegram.
-
-2. **Privacy First (100% In-Browser Rendering)**:
-   - Attendee personal photos are composited directly on the client's **HTML5 Canvas**.
-   - User photos never touch or store on the backend server, eliminating bandwidth costs and privacy concerns.
-
-3. **Organizer / Admin Portal**:
-   - Create campaigns with customized canvas dimensions (4:5 portrait, 1:1 square, 9:16 story, or custom).
-   - Upload transparent PNG overlays or use dynamic vector frame presets.
-   - Built-in QR Code generator with printable badge format.
-   - Real-time audience analytics tracking visits, photo uploads, downloads, and conversion rates.
-
----
-
-## 📡 REST API Reference
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/health` | Service health status |
-| `GET` | `/api/campaigns` | List all event campaigns |
-| `GET` | `/api/campaigns/:idOrSlug` | Fetch specific campaign details |
-| `POST` | `/api/campaigns` | Create new campaign |
-| `PUT` | `/api/campaigns/:id` | Update campaign settings |
-| `DELETE` | `/api/campaigns/:id` | Delete a campaign |
-| `POST` | `/api/upload/frame` | Upload custom transparent PNG overlay |
-| `POST` | `/api/campaigns/:id/analytics` | Track event (`visit`, `upload`, `download`) |
-| `GET` | `/api/analytics/overview` | Aggregated engagement metrics |
+To access the **Operator Control Console**:
+- **Username**: `admin` *(or `operator`)*
+- **Passcode**: `2026` *(or `frame2026`)*
