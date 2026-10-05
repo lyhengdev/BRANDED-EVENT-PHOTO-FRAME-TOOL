@@ -2,80 +2,14 @@ import mongoose from 'mongoose';
 import { Campaign } from './models/Campaign.js';
 import { Analytics } from './models/Analytics.js';
 
-const SEED_CAMPAIGNS = [
-  {
-    slug: 'mtf2026',
-    name: 'Modern Tech Frontier 2026',
-    eventTitle: 'MTF 2026 Developer Summit',
-    description: 'Create your official attendee badge & photo frame. Share with #MTF2026!',
-    tagline: 'Connecting Builders of the Next Era',
-    status: 'published',
-    canvasWidth: 1080,
-    canvasHeight: 1350,
-    aspectRatio: '4:5',
-    themeColor: '#6366f1',
-    accentColor: '#06b6d4',
-    frameType: 'preset',
-    framePreset: 'tech-summit',
-    frameUrl: '/presets/mtf2026-frame.png',
-    frameMeta: {
-      headline: 'MODERN TECH FRONTIER 2026',
-      subline: 'OFFICIAL ATTENDEE • SAN FRANCISCO, CA',
-      badgeText: 'DELEGATE',
-      borderStyle: 'cyber-glow',
-      bannerPosition: 'bottom'
-    }
-  },
-  {
-    slug: 'summerbeats2026',
-    name: 'Summer Beats Music Fest',
-    eventTitle: 'Summer Beats Fest 2026',
-    description: 'Get your festival vibe on! Frame your party moment and share.',
-    tagline: 'Feel the Sound • Live the Moment',
-    status: 'published',
-    canvasWidth: 1080,
-    canvasHeight: 1080,
-    aspectRatio: '1:1',
-    themeColor: '#ec4899',
-    accentColor: '#f59e0b',
-    frameType: 'preset',
-    framePreset: 'neon-fest',
-    frameUrl: '/presets/summerbeats-frame.png',
-    frameMeta: {
-      headline: 'SUMMER BEATS 2026',
-      subline: 'LIVE AT GOLDEN GATE PARK',
-      badgeText: 'VIP ACCESS',
-      borderStyle: 'neon-gradient',
-      bannerPosition: 'corners'
-    }
-  },
-  {
-    slug: 'aisummit2026',
-    name: 'Global AI Summit 2026',
-    eventTitle: 'Global AI Summit • Story Edition',
-    description: 'Vertical story frame for Instagram & TikTok. Share your conference highlights!',
-    tagline: 'Intelligence Unleashed',
-    status: 'published',
-    canvasWidth: 1080,
-    canvasHeight: 1920,
-    aspectRatio: '9:16',
-    themeColor: '#8b5cf6',
-    accentColor: '#10b981',
-    frameType: 'preset',
-    framePreset: 'ai-story',
-    frameUrl: '/presets/aisummit-frame.png',
-    frameMeta: {
-      headline: 'GLOBAL AI SUMMIT',
-      subline: 'OCTOBER 2026 • KEYNOTE ATTENDEE',
-      badgeText: 'AI INNOVATOR',
-      borderStyle: 'holographic',
-      bannerPosition: 'full-border'
-    }
-  }
-];
+let cachedConnection = null;
 
 export async function connectDB(mongoUri) {
   try {
+    if (cachedConnection && mongoose.connection.readyState === 1) {
+      return cachedConnection;
+    }
+
     const uri = mongoUri || process.env.MONGODB_URI;
     if (!uri) {
       throw new Error('MONGODB_URI is not defined in environment variables.');
@@ -93,50 +27,27 @@ export async function connectDB(mongoUri) {
       console.warn('⚠️  MongoDB Atlas: Connection disconnected.');
     });
 
-    await mongoose.connect(uri, {
+    cachedConnection = await mongoose.connect(uri, {
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000
     });
 
-    // Auto-seed initial campaigns if database is fresh
-    await seedInitialData();
-
-    return true;
+    return cachedConnection;
   } catch (err) {
     console.error('Failed to initialize MongoDB Atlas connection:', err.message);
     throw err;
   }
 }
 
-async function seedInitialData() {
-  try {
-    const count = await Campaign.countDocuments();
-    if (count === 0) {
-      console.log('🌱 Seeding default initial event campaigns into MongoDB Atlas...');
-      for (const item of SEED_CAMPAIGNS) {
-        const created = await Campaign.create(item);
-        await Analytics.create({
-          campaignId: created._id.toString(),
-          visits: item.slug === 'mtf2026' ? 5280 : item.slug === 'summerbeats2026' ? 3410 : 2890,
-          photosUploaded: item.slug === 'mtf2026' ? 2140 : item.slug === 'summerbeats2026' ? 1680 : 1220,
-          downloads: item.slug === 'mtf2026' ? 1850 : item.slug === 'summerbeats2026' ? 1420 : 980,
-          history: []
-        });
-      }
-      console.log('✓ MongoDB Atlas seeding completed successfully.');
-    }
-  } catch (e) {
-    console.error('Warning during MongoDB seeding:', e.message);
-  }
-}
-
 export const db = {
   async getCampaigns() {
+    await connectDB();
     const list = await Campaign.find({ status: { $ne: 'archived' } }).sort({ createdAt: -1 });
     return list.map(c => c.toJSON());
   },
 
   async getCampaignById(idOrSlug) {
+    await connectDB();
     let doc = null;
     if (mongoose.Types.ObjectId.isValid(idOrSlug)) {
       doc = await Campaign.findById(idOrSlug);
@@ -148,11 +59,13 @@ export const db = {
   },
 
   async getCampaignBySlug(slug) {
+    await connectDB();
     const doc = await Campaign.findOne({ slug: slug.toLowerCase() });
     return doc ? doc.toJSON() : null;
   },
 
   async createCampaign(campaignData) {
+    await connectDB();
     const rawSlug = (campaignData.slug || campaignData.name || 'campaign')
       .toLowerCase()
       .trim()
@@ -199,6 +112,7 @@ export const db = {
   },
 
   async updateCampaign(id, updateData) {
+    await connectDB();
     if (!mongoose.Types.ObjectId.isValid(id)) {
       const bySlug = await Campaign.findOne({ slug: id });
       if (bySlug) id = bySlug._id;
@@ -214,6 +128,7 @@ export const db = {
   },
 
   async deleteCampaign(id) {
+    await connectDB();
     let filter = { _id: id };
     if (!mongoose.Types.ObjectId.isValid(id)) {
       filter = { slug: id };
@@ -227,6 +142,7 @@ export const db = {
   },
 
   async recordAnalytics(campaignId, eventType) {
+    await connectDB();
     const incField = 
       eventType === 'visit' ? 'visits' : 
       eventType === 'upload' || eventType === 'photo_upload' ? 'photosUploaded' : 
@@ -236,7 +152,7 @@ export const db = {
       $push: {
         history: {
           $each: [{ event: eventType, timestamp: new Date() }],
-          $slice: -100 // retain latest 100 entries
+          $slice: -100
         }
       }
     };
@@ -255,6 +171,7 @@ export const db = {
   },
 
   async getAnalytics(campaignId) {
+    await connectDB();
     let stat = await Analytics.findOne({ campaignId });
     if (!stat) {
       stat = await Analytics.create({
@@ -275,6 +192,7 @@ export const db = {
   },
 
   async getAllAnalyticsSummary() {
+    await connectDB();
     const campaigns = await Campaign.find({ status: { $ne: 'archived' } }).sort({ createdAt: -1 });
     const statsList = await Analytics.find();
 

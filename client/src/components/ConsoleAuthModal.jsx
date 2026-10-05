@@ -4,7 +4,7 @@ import { Lock, Unlock, KeyRound, ShieldAlert, Check, X, ShieldCheck, HelpCircle 
 import { sound } from '../utils/soundEffects';
 
 export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
-  const [username, setUsername] = useState('admin');
+  const [username, setUsername] = useState('mtfteam');
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,7 +16,7 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
   // CRITICAL: Cleanly reset all state whenever modal opens or closes
   useEffect(() => {
     if (isOpen) {
-      setUsername('admin');
+      setUsername('mtfteam');
       setPasscode('');
       setError('');
       setLoading(false);
@@ -233,7 +233,7 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
                 className="input"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
+                placeholder="mtfteam"
                 style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}
                 required
               />
@@ -333,7 +333,7 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
               style={{ fontSize: '0.75rem', color: '#94a3b8', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
             >
               <HelpCircle size={14} />
-              <span>{showHint ? 'Default credentials:' : 'Default credentials hint'}</span>
+              <span>{showHint ? 'Authorized credentials:' : 'Authorized credentials hint'}</span>
             </button>
             {showHint && (
               <div style={{
@@ -346,7 +346,7 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
                 display: 'inline-block',
                 fontFamily: 'var(--font-mono)'
               }}>
-                User: <strong>admin</strong> • Passcode: <strong>2026</strong> (or <strong>frame2026</strong>)
+                User: <strong>mtfteam</strong> • Passcode: <strong>2022</strong>
               </div>
             )}
           </div>

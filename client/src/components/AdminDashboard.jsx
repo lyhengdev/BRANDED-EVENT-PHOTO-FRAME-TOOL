@@ -116,10 +116,10 @@ export default function AdminDashboard({
             <Users size={14} color="#06b6d4" />
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 900, fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
-            {analyticsOverview?.totalVisits?.toLocaleString() || '11,580'}
+            {analyticsOverview?.totalVisits?.toLocaleString() || '0'}
           </div>
           <div style={{ height: 4, background: '#171c2e', borderRadius: 2, marginTop: 8, overflow: 'hidden' }}>
-            <div style={{ width: '85%', height: '100%', background: '#06b6d4' }} />
+            <div style={{ width: analyticsOverview?.totalVisits ? '85%' : '0%', height: '100%', background: '#06b6d4' }} />
           </div>
         </div>
 
@@ -130,10 +130,10 @@ export default function AdminDashboard({
             <ImageIcon size={14} color="#ec4899" />
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 900, fontFamily: 'var(--font-mono)', color: '#f472b6' }}>
-            {analyticsOverview?.totalUploads?.toLocaleString() || '5,040'}
+            {analyticsOverview?.totalUploads?.toLocaleString() || '0'}
           </div>
           <div style={{ height: 4, background: '#171c2e', borderRadius: 2, marginTop: 8, overflow: 'hidden' }}>
-            <div style={{ width: '65%', height: '100%', background: '#ec4899' }} />
+            <div style={{ width: analyticsOverview?.totalUploads ? '65%' : '0%', height: '100%', background: '#ec4899' }} />
           </div>
         </div>
 
@@ -144,10 +144,10 @@ export default function AdminDashboard({
             <Download size={14} color="#10b981" />
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 900, fontFamily: 'var(--font-mono)', color: '#34d399' }}>
-            {analyticsOverview?.totalDownloads?.toLocaleString() || '4,250'}
+            {analyticsOverview?.totalDownloads?.toLocaleString() || '0'}
           </div>
           <div style={{ height: 4, background: '#171c2e', borderRadius: 2, marginTop: 8, overflow: 'hidden' }}>
-            <div style={{ width: '55%', height: '100%', background: '#10b981' }} />
+            <div style={{ width: analyticsOverview?.totalDownloads ? '55%' : '0%', height: '100%', background: '#10b981' }} />
           </div>
         </div>
 
@@ -158,10 +158,10 @@ export default function AdminDashboard({
             <TrendingUp size={14} color="#f59e0b" />
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 900, fontFamily: 'var(--font-mono)', color: '#fbbf24' }}>
-            {analyticsOverview?.overallConversionRate || '36.7%'}
+            {analyticsOverview?.overallConversionRate || '0.0%'}
           </div>
           <div style={{ height: 4, background: '#171c2e', borderRadius: 2, marginTop: 8, overflow: 'hidden' }}>
-            <div style={{ width: '37%', height: '100%', background: '#f59e0b' }} />
+            <div style={{ width: analyticsOverview?.totalDownloads ? '37%' : '0%', height: '100%', background: '#f59e0b' }} />
           </div>
         </div>
       </div>
@@ -175,15 +175,55 @@ export default function AdminDashboard({
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {campaigns.map((camp, idx) => {
-          const campStats = analyticsOverview?.campaigns?.find(c => c.campaignId === camp.id) || {
-            visits: 1200,
-            photosUploaded: 540,
-            downloads: 480
-          };
+      {campaigns.length === 0 ? (
+        <div className="camera-chassis" style={{ padding: '40px 24px', textAlign: 'center', borderRadius: 'var(--radius-lg)' }}>
+          <div style={{
+            width: 58,
+            height: 58,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 35% 35%, #334155 0%, #0f172a 100%)',
+            border: '2px solid rgba(255,255,255,0.15)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px'
+          }}>
+            <Sparkles size={26} color="#818cf8" />
+          </div>
+          <h3 className="engraved-light" style={{ fontSize: '1.25rem', marginBottom: 6 }}>
+            NO EVENT CHANNELS DEPLOYED
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', maxWidth: 460, margin: '0 auto 22px' }}>
+            The database is currently clean and fresh. Deploy your first branded frame channel to generate shareable links and high-res QR badges.
+          </p>
+          <button
+            onClick={() => {
+              sound.playMechanicalClick();
+              onOpenCreate();
+            }}
+            className="btn-tactile"
+            style={{
+              background: 'linear-gradient(180deg, #4338ca 0%, #312e81 60%, #1e1b4b 100%)',
+              color: '#fff',
+              padding: '12px 24px',
+              fontSize: '0.9rem'
+            }}
+          >
+            <PlusCircle size={18} />
+            <span>Deploy First Campaign</span>
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {campaigns.map((camp, idx) => {
+            const campStats = analyticsOverview?.campaigns?.find(c => c.campaignId === camp.id) || {
+              visits: 0,
+              photosUploaded: 0,
+              downloads: 0
+            };
 
-          return (
+            return (
             <motion.div 
               key={camp.id}
               initial={{ opacity: 0, y: 10 }}
@@ -306,6 +346,7 @@ export default function AdminDashboard({
           );
         })}
       </div>
+      )}
     </div>
   );
 }

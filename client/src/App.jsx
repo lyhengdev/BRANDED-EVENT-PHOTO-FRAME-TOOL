@@ -5,80 +5,13 @@ import AdminDashboard from './components/AdminDashboard';
 import CreateCampaignModal from './components/CreateCampaignModal';
 import QRCodeModal from './components/QRCodeModal';
 import ConsoleAuthModal from './components/ConsoleAuthModal';
+import { Sparkles, PlusCircle } from 'lucide-react';
 import { sound } from './utils/soundEffects';
 
-const DEFAULT_CAMPAIGNS = [
-  {
-    id: 'camp_mtf2026',
-    slug: 'mtf2026',
-    name: 'Modern Tech Frontier 2026',
-    eventTitle: 'MTF 2026 Developer Summit',
-    description: 'Create your official attendee badge & photo frame. Share with #MTF2026!',
-    tagline: 'Connecting Builders of the Next Era',
-    status: 'published',
-    canvasWidth: 1080,
-    canvasHeight: 1350,
-    aspectRatio: '4:5',
-    themeColor: '#6366f1',
-    accentColor: '#06b6d4',
-    frameType: 'preset',
-    framePreset: 'tech-summit',
-    frameMeta: {
-      headline: 'MODERN TECH FRONTIER 2026',
-      subline: 'OFFICIAL ATTENDEE • SAN FRANCISCO, CA',
-      badgeText: 'DELEGATE',
-      borderStyle: 'cyber-glow'
-    }
-  },
-  {
-    id: 'camp_summerbeats',
-    slug: 'summerbeats2026',
-    name: 'Summer Beats Music Fest',
-    eventTitle: 'Summer Beats Fest 2026',
-    description: 'Get your festival vibe on! Frame your party moment and share.',
-    tagline: 'Feel the Sound • Live the Moment',
-    status: 'published',
-    canvasWidth: 1080,
-    canvasHeight: 1080,
-    aspectRatio: '1:1',
-    themeColor: '#ec4899',
-    accentColor: '#f59e0b',
-    frameType: 'preset',
-    framePreset: 'neon-fest',
-    frameMeta: {
-      headline: 'SUMMER BEATS 2026',
-      subline: 'LIVE AT GOLDEN GATE PARK',
-      badgeText: 'VIP ACCESS',
-      borderStyle: 'neon-gradient'
-    }
-  },
-  {
-    id: 'camp_aisummit',
-    slug: 'aisummit2026',
-    name: 'Global AI Summit 2026',
-    eventTitle: 'Global AI Summit • Story Edition',
-    description: 'Vertical story frame for Instagram & TikTok. Share your conference highlights!',
-    tagline: 'Intelligence Unleashed',
-    status: 'published',
-    canvasWidth: 1080,
-    canvasHeight: 1920,
-    aspectRatio: '9:16',
-    themeColor: '#8b5cf6',
-    accentColor: '#10b981',
-    frameType: 'preset',
-    framePreset: 'ai-story',
-    frameMeta: {
-      headline: 'GLOBAL AI SUMMIT',
-      subline: 'OCTOBER 2026 • KEYNOTE ATTENDEE',
-      badgeText: 'AI INNOVATOR',
-      borderStyle: 'holographic'
-    }
-  }
-];
-
 export default function App() {
-  const [campaigns, setCampaigns] = useState(DEFAULT_CAMPAIGNS);
-  const [currentCampaign, setCurrentCampaign] = useState(DEFAULT_CAMPAIGNS[0]);
+  const [campaigns, setCampaigns] = useState([]);
+  const [currentCampaign, setCurrentCampaign] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState('attendee'); // 'attendee' | 'admin'
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -104,19 +37,19 @@ export default function App() {
           }
         })
         .catch(() => {
-          // If offline or error, retain session
-          setIsAuthenticated(true);
+          setIsAuthenticated(false);
         });
     }
   }, []);
 
-  // Fetch campaigns from backend
+  // Fetch campaigns from MongoDB backend
   const fetchCampaigns = async () => {
     try {
+      setLoading(true);
       const res = await fetch('/api/campaigns');
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setCampaigns(data);
           const params = new URLSearchParams(window.location.search);
           const slugParam = params.get('f');
@@ -128,11 +61,13 @@ export default function App() {
               return;
             }
           }
-          setCurrentCampaign(prev => data.find(c => c.id === prev?.id) || data[0]);
+          setCurrentCampaign(data[0] || null);
         }
       }
     } catch (e) {
-      console.warn('API server connection: using local fallback campaigns.');
+      console.error('Failed to load campaigns from MongoDB Atlas:', e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -208,6 +143,56 @@ export default function App() {
             campaigns={campaigns}
             onSelectCampaign={handleSelectCampaign}
           />
+        ) : currentView === 'attendee' && !currentCampaign ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '65vh',
+            padding: 24,
+            textAlign: 'center'
+          }}>
+            <div className="camera-chassis" style={{ maxWidth: 460, padding: '40px 28px', position: 'relative' }}>
+              <div className="chassis-screw" style={{ top: 12, left: 12 }} />
+              <div className="chassis-screw" style={{ top: 12, right: 12 }} />
+              <div className="chassis-screw" style={{ bottom: 12, left: 12 }} />
+              <div className="chassis-screw" style={{ bottom: 12, right: 12 }} />
+
+              <div style={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle at 35% 35%, #3b4261 0%, #151828 100%)',
+                border: '2px solid rgba(255,255,255,0.2)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px'
+              }}>
+                <Sparkles size={28} color="#818cf8" />
+              </div>
+              <h2 className="engraved-light" style={{ fontSize: '1.25rem', marginBottom: 8 }}>
+                NO ACTIVE EVENT FRAME
+              </h2>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', marginBottom: 22, lineHeight: 1.5 }}>
+                Database is clean and ready. Authorize in the Control Console to deploy your first branded frame channel.
+              </p>
+              <button
+                onClick={handleRequestAdmin}
+                className="btn-tactile"
+                style={{
+                  background: 'linear-gradient(180deg, #4338ca 0%, #312e81 60%, #1e1b4b 100%)',
+                  color: '#fff',
+                  padding: '12px 24px',
+                  fontSize: '0.9rem'
+                }}
+              >
+                <span>Authorize & Deploy Frame</span>
+              </button>
+            </div>
+          </div>
         ) : (
           <AdminDashboard
             campaigns={campaigns}
