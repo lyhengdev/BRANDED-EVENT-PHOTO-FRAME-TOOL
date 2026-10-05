@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Unlock, KeyRound, ShieldAlert, Check, X, ShieldCheck, HelpCircle } from 'lucide-react';
 import { sound } from '../utils/soundEffects';
@@ -11,6 +11,22 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
   const [unlockedState, setUnlockedState] = useState(false);
   const [showHint, setShowHint] = useState(false);
 
+  const passInputRef = useRef(null);
+
+  // CRITICAL: Cleanly reset all state whenever modal opens or closes
+  useEffect(() => {
+    if (isOpen) {
+      setUsername('admin');
+      setPasscode('');
+      setError('');
+      setLoading(false);
+      setUnlockedState(false);
+      setTimeout(() => {
+        passInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleKeypadPress = (val) => {
@@ -22,7 +38,7 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
       setPasscode(prev => prev.slice(0, -1));
       setError('');
     } else {
-      if (passcode.length < 12) {
+      if (passcode.length < 16) {
         setPasscode(prev => prev + val);
         setError('');
       }
@@ -30,12 +46,25 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
   };
 
   const handleAuthorize = async (e) => {
-    if (e) e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setError('');
 
-    if (!username.trim() || !passcode.trim()) {
-      setError('Please provide operator username and passcode');
+    const trimmedUser = (username || '').trim();
+    const trimmedPass = (passcode || '').trim();
+
+    if (!trimmedUser) {
+      setError('Please enter operator username');
       sound.playMechanicalClick();
+      return;
+    }
+
+    if (!trimmedPass) {
+      setError('Please enter operator passcode (e.g. 2026)');
+      sound.playMechanicalClick();
+      passInputRef.current?.focus();
       return;
     }
 
@@ -44,7 +73,7 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, passcode })
+        body: JSON.stringify({ username: trimmedUser, passcode: trimmedPass })
       });
 
       const data = await res.json();
@@ -52,20 +81,34 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
         sound.playShutterSound();
         setUnlockedState(true);
         localStorage.setItem('framecraft_admin_token', data.token);
+
         setTimeout(() => {
           onSuccess(data.user);
-        }, 600);
+          setUnlockedState(false);
+          setPasscode('');
+          setLoading(false);
+        }, 500);
       } else {
         sound.playMechanicalClick();
         setError(data.error || 'Access Denied: Invalid credentials');
         setPasscode('');
+        setLoading(false);
+        passInputRef.current?.focus();
       }
     } catch (err) {
       sound.playMechanicalClick();
       setError('Connection failure: ' + err.message);
-    } finally {
       setLoading(false);
     }
+  };
+
+  const handleClose = () => {
+    sound.playMechanicalClick();
+    setPasscode('');
+    setError('');
+    setLoading(false);
+    setUnlockedState(false);
+    onClose();
   };
 
   return (
@@ -108,10 +151,8 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
 
           {/* Cancel / Abort Button */}
           <button
-            onClick={() => {
-              sound.playMechanicalClick();
-              onClose();
-            }}
+            type="button"
+            onClick={handleClose}
             className="btn-tactile btn-tactile-icon"
             style={{ position: 'absolute', top: 14, right: 14, width: 32, height: 32 }}
           >
@@ -203,6 +244,7 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
                 KEYPAD / KEYBOARD PASSCODE
               </label>
               <input
+                ref={passInputRef}
                 type="password"
                 className="input"
                 value={passcode}
@@ -255,7 +297,7 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
             {/* Authorize Master Button */}
             <button
               type="submit"
-              disabled={loading || unlockedState}
+              disabled={loading}
               className="btn-tactile"
               style={{
                 marginTop: 8,
@@ -264,7 +306,8 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
                   : 'linear-gradient(180deg, #4338ca 0%, #312e81 60%, #1e1b4b 100%)',
                 color: '#fff',
                 padding: '12px',
-                fontSize: '0.95rem'
+                fontSize: '0.95rem',
+                cursor: loading ? 'wait' : 'pointer'
               }}
             >
               {unlockedState ? (
