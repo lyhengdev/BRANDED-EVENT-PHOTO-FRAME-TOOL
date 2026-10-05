@@ -4,16 +4,14 @@ import { connectDB } from './database.js';
 
 const PORT = process.env.PORT || 5001;
 
-async function startServer() {
-  try {
-    await connectDB();
-    app.listen(PORT, () => {
-      console.log(`🚀 FrameCraft API listening on port ${PORT}`);
-    });
-  } catch (err) {
-    console.error('Failed to start server:', err.message);
-    process.exit(1);
-  }
-}
+// Non-blocking initialization of MongoDB Atlas connection
+connectDB().catch((err) => {
+  console.warn('⚠️  MongoDB initial connection deferred:', err.message);
+});
 
-startServer();
+// Always start listening on the assigned port
+const server = app.listen(PORT, () => {
+  console.log(`🚀 FrameCraft API listening on port ${PORT}`);
+});
+
+export default app;

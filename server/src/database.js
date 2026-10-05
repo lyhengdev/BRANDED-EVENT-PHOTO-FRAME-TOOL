@@ -2,18 +2,22 @@ import mongoose from 'mongoose';
 import { Campaign } from './models/Campaign.js';
 import { Analytics } from './models/Analytics.js';
 
+const FALLBACK_URI = 'mongodb+srv://lyhengdev_db_user:t6cjUYSZ6xkjXN7J@cluster0.kgxsvma.mongodb.net/branded_photo_frame?retryWrites=true&w=majority';
+
 let cachedConnection = null;
+let connectionPromise = null;
 
 export async function connectDB(mongoUri) {
   try {
-    if (cachedConnection && mongoose.connection.readyState === 1) {
-      return cachedConnection;
+    if (mongoose.connection.readyState === 1) {
+      return mongoose.connection;
     }
 
-    const uri = mongoUri || process.env.MONGODB_URI;
-    if (!uri) {
-      throw new Error('MONGODB_URI is not defined in environment variables.');
+    if (connectionPromise) {
+      return await connectionPromise;
     }
+
+    const uri = mongoUri || process.env.MONGODB_URI || FALLBACK_URI;
 
     mongoose.connection.on('connected', () => {
       console.log('🍃 MongoDB Atlas: Connected successfully.');
@@ -27,13 +31,15 @@ export async function connectDB(mongoUri) {
       console.warn('⚠️  MongoDB Atlas: Connection disconnected.');
     });
 
-    cachedConnection = await mongoose.connect(uri, {
+    connectionPromise = mongoose.connect(uri, {
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000
+      serverSelectionTimeoutMS: 8000,
     });
 
+    cachedConnection = await connectionPromise;
     return cachedConnection;
   } catch (err) {
+    connectionPromise = null;
     console.error('Failed to initialize MongoDB Atlas connection:', err.message);
     throw err;
   }

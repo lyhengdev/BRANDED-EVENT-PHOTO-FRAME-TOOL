@@ -5,79 +5,66 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { connectDB, db } from './database.js';
+import { db } from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Directory configuration
+// Base middleware
+app.use(cors());
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+
+// Static directories (optional/local)
 const UPLOADS_DIR = path.join(__dirname, '../uploads');
 const PRESETS_DIR = path.join(__dirname, '../public/presets');
 
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
-if (!fs.existsSync(PRESETS_DIR)) {
-  fs.mkdirSync(PRESETS_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  if (!fs.existsSync(PRESETS_DIR)) fs.mkdirSync(PRESETS_DIR, { recursive: true });
+} catch {
+  // Read-only filesystem on serverless environments
 }
 
-// Middleware
-app.use(cors());
-app.use(express.json({ limit: '25mb' }));
 app.use('/uploads', express.static(UPLOADS_DIR));
 app.use('/presets', express.static(PRESETS_DIR));
 
-// Ensure DB is connected for serverless invocations
-app.use(async (req, res, next) => {
-  try {
-    await connectDB();
-    next();
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Multer storage for transparent PNG frames
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOADS_DIR);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || '.png';
-    const uniqueName = `frame-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-    cb(null, uniqueName);
-  }
-});
-
+// Memory storage for uploads so files convert directly to base64 Data URLs
+// This avoids serverless ephemeral filesystem issues on Vercel
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 15 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'image/png' || file.mimetype === 'image/webp' || file.mimetype === 'image/jpeg') {
+    if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only PNG/WebP images with transparency are recommended.'));
+      cb(new Error('Only image files (PNG, WebP, JPEG) are allowed.'));
     }
   }
 });
 
+// Admin credentials
+const ADMIN_USER = process.env.ADMIN_USER || 'mtfteam';
+const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '2022';
+
+// Create API Router
+const apiRouter = express.Router();
+
 // Health Check
-app.get('/api/health', (req, res) => {
+apiRouter.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     database: 'MongoDB Atlas',
+    operator: ADMIN_USER,
     timestamp: new Date().toISOString()
   });
 });
 
 // Operator Authentication (Username: mtfteam | Passcode: 2022)
-const ADMIN_USER = process.env.ADMIN_USER || 'mtfteam';
-const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '2022';
-
-app.post('/api/auth/login', (req, res) => {
-  const { username, passcode } = req.body;
+apiRouter.post('/auth/login', (req, res) => {
+  const { username, passcode } = req.body || {};
   const userStr = String(username || '').trim().toLowerCase();
   const passStr = String(passcode || '').trim();
 
@@ -92,7 +79,7 @@ app.post('/api/auth/login', (req, res) => {
   return res.status(401).json({ error: 'Access Denied: Invalid Operator Username or Passcode' });
 });
 
-app.post('/api/auth/verify', (req, res) => {
+apiRouter.post('/auth/verify', (req, res) => {
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer token_')) {
     return res.json({ valid: true, user: { username: ADMIN_USER, role: 'operator' } });
@@ -101,31 +88,31 @@ app.post('/api/auth/verify', (req, res) => {
 });
 
 // Upload transparent PNG frame
-app.post('/api/upload/frame', upload.single('frameImage'), (req, res) => {
+apiRouter.post('/upload/frame', upload.single('frameImage'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No image file uploaded' });
   }
-  const fileUrl = `/uploads/${req.file.filename}`;
+  const base64Url = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
   res.json({
     success: true,
-    fileUrl,
-    filename: req.file.filename,
+    fileUrl: base64Url,
+    filename: req.file.originalname || 'frame.png',
     size: req.file.size
   });
 });
 
 // List all campaigns
-app.get('/api/campaigns', async (req, res) => {
+apiRouter.get('/campaigns', async (req, res, next) => {
   try {
     const campaigns = await db.getCampaigns();
     res.json(campaigns);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // Get campaign by slug or ID
-app.get('/api/campaigns/:idOrSlug', async (req, res) => {
+apiRouter.get('/campaigns/:idOrSlug', async (req, res, next) => {
   try {
     const { idOrSlug } = req.params;
     let campaign = await db.getCampaignBySlug(idOrSlug);
@@ -137,22 +124,22 @@ app.get('/api/campaigns/:idOrSlug', async (req, res) => {
     }
     res.json(campaign);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // Create campaign
-app.post('/api/campaigns', async (req, res) => {
+apiRouter.post('/campaigns', async (req, res, next) => {
   try {
     const campaign = await db.createCampaign(req.body);
     res.status(201).json(campaign);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    next(err);
   }
 });
 
 // Update campaign
-app.put('/api/campaigns/:id', async (req, res) => {
+apiRouter.put('/campaigns/:id', async (req, res, next) => {
   try {
     const updated = await db.updateCampaign(req.params.id, req.body);
     if (!updated) {
@@ -160,12 +147,12 @@ app.put('/api/campaigns/:id', async (req, res) => {
     }
     res.json(updated);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    next(err);
   }
 });
 
 // Delete campaign
-app.delete('/api/campaigns/:id', async (req, res) => {
+apiRouter.delete('/campaigns/:id', async (req, res, next) => {
   try {
     const success = await db.deleteCampaign(req.params.id);
     if (!success) {
@@ -173,54 +160,55 @@ app.delete('/api/campaigns/:id', async (req, res) => {
     }
     res.json({ success: true, message: 'Campaign deleted successfully' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // Track analytics event (visit, upload, download)
-app.post('/api/campaigns/:id/analytics', async (req, res) => {
+apiRouter.post('/campaigns/:id/analytics', async (req, res, next) => {
   try {
-    const { eventType } = req.body;
+    const { eventType } = req.body || {};
     if (!eventType) {
       return res.status(400).json({ error: 'eventType is required' });
     }
     const stat = await db.recordAnalytics(req.params.id, eventType);
     res.json({ success: true, stat });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // Get campaign analytics
-app.get('/api/campaigns/:id/analytics', async (req, res) => {
+apiRouter.get('/campaigns/:id/analytics', async (req, res, next) => {
   try {
     const data = await db.getAnalytics(req.params.id);
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // Global analytics overview
-app.get('/api/analytics/overview', async (req, res) => {
+apiRouter.get('/analytics/overview', async (req, res, next) => {
   try {
     const summary = await db.getAllAnalyticsSummary();
     res.json(summary);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-// Production: Serve built frontend from client/dist if available
-const CLIENT_DIST = path.join(__dirname, '../../client/dist');
-if (fs.existsSync(CLIENT_DIST)) {
-  app.use(express.static(CLIENT_DIST));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/presets')) {
-      return next();
-    }
-    res.sendFile(path.join(CLIENT_DIST, 'index.html'));
+// Mount the router on BOTH '/api' and '/' to guarantee matches regardless of Vercel rewrite prefix stripping
+app.use('/api', apiRouter);
+app.use(apiRouter);
+
+// Global JSON error handler (guarantees API always returns JSON, never HTML)
+app.use((err, req, res, next) => {
+  console.error('Unhandled API Error:', err);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error',
+    success: false
   });
-}
+});
 
 export default app;

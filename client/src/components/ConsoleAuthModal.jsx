@@ -76,7 +76,15 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
         body: JSON.stringify({ username: trimmedUser, passcode: trimmedPass })
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      let data = null;
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(`Server returned ${res.status}: ${text.slice(0, 80) || res.statusText}`);
+      }
+
       if (res.ok && data.success) {
         sound.playShutterSound();
         setUnlockedState(true);
@@ -90,7 +98,7 @@ export default function ConsoleAuthModal({ isOpen, onClose, onSuccess }) {
         }, 500);
       } else {
         sound.playMechanicalClick();
-        setError(data.error || 'Access Denied: Invalid credentials');
+        setError(data?.error || 'Access Denied: Invalid credentials');
         setPasscode('');
         setLoading(false);
         passInputRef.current?.focus();
