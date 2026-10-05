@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { drawFramePreset, exportHighResolutionPhoto } from '../utils/frameRenderer';
 import { sound } from '../utils/soundEffects';
+import PhotoReadyModal from './PhotoReadyModal';
 
 export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaign }) {
   const [userImage, setUserImage] = useState(null);
@@ -17,6 +18,7 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [showStudioFilters, setShowStudioFilters] = useState(false);
   const [showGestureHint, setShowGestureHint] = useState(false);
+  const [readyModalData, setReadyModalData] = useState(null);
 
   // Transform state for user photo inside viewfinder
   const [transform, setTransform] = useState({
@@ -323,16 +325,12 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
       sound.playShutterSound();
 
       const blob = await generateExportBlob();
-
-      // Trigger automatic save to device
       const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `${campaign.slug || 'branded'}-photo-${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
+      const filename = `${campaign.slug || 'branded'}-photo-${Date.now()}.png`;
+      const file = new File([blob], filename, { type: 'image/png' });
+
+      // Open Photo Ready Modal with direct preview and Camera Roll guidance
+      setReadyModalData({ url: downloadUrl, blob, file });
 
       // Record download analytics
       if (campaign?.id) {
@@ -352,6 +350,28 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
 
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 3000);
+
+      // On mobile devices, attempt native system share sheet directly so "Save Image" to Photos appears!
+      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: campaign.eventTitle || campaign.name,
+            text: `My photo for ${campaign.name}`
+          });
+        } catch (e) {
+          // User dismissed share sheet, modal remains active with preview
+        }
+      } else {
+        // Desktop / standard file download
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
     } catch (err) {
       console.error('Export error:', err);
       alert('Error exporting image. Please try again.');
@@ -939,6 +959,15 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
           </span>
         </div>
       </motion.div>
+
+      {/* Developed Photo Modal with direct Camera Roll / Photos save & social share */}
+      <PhotoReadyModal
+        isOpen={!!readyModalData}
+        onClose={() => setReadyModalData(null)}
+        photoUrl={readyModalData?.url}
+        photoBlob={readyModalData?.blob}
+        campaign={campaign}
+      />
     </div>
   );
 }
