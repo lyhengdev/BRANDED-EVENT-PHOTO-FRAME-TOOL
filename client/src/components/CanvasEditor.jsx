@@ -4,7 +4,7 @@ import confetti from 'canvas-confetti';
 import { 
   Upload, Download, RotateCw, ZoomIn, ZoomOut, RefreshCw, 
   FlipHorizontal, Sparkles, Share2, Check, Camera, Sliders,
-  Sun, Contrast, Palette, Aperture, Eye
+  Sun, Contrast, Palette, Aperture, Image as ImageIcon, Smile
 } from 'lucide-react';
 import { drawFramePreset, exportHighResolutionPhoto } from '../utils/frameRenderer';
 import { sound } from '../utils/soundEffects';
@@ -16,6 +16,7 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
   const [isExporting, setIsExporting] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [showStudioFilters, setShowStudioFilters] = useState(false);
+  const [showGestureHint, setShowGestureHint] = useState(false);
 
   // Transform state for user photo inside viewfinder
   const [transform, setTransform] = useState({
@@ -35,7 +36,9 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
   });
 
   const canvasRef = useRef(null);
-  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const selfieInputRef = useRef(null);
+  const libraryInputRef = useRef(null);
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const touchDistanceRef = useRef(null);
@@ -64,7 +67,7 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     }
   }, [campaign]);
 
-  // Handle Photo Upload
+  // Handle Photo Selection (Camera or Library)
   const handlePhotoSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -96,6 +99,10 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
           flipV: false
         });
 
+        // Show gesture guidance on mobile for 3 seconds
+        setShowGestureHint(true);
+        setTimeout(() => setShowGestureHint(false), 3200);
+
         // Record upload analytics
         if (campaign?.id) {
           fetch(`/api/campaigns/${campaign.id}/analytics`, {
@@ -108,6 +115,9 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
       img.src = event.target.result;
     };
     reader.readAsDataURL(file);
+
+    // Reset input value so same photo can be re-selected if desired
+    e.target.value = '';
   };
 
   // Render composite frame and user photo onto screen canvas
@@ -133,8 +143,6 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     // 2. Draw user photo with transforms and studio color grading
     if (userImage) {
       ctx.save();
-
-      // Apply CSS filter on context
       ctx.filter = `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturation}%)`;
 
       const centerX = width / 2 + transform.x;
@@ -164,9 +172,10 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     renderCanvas();
   }, [renderCanvas]);
 
-  // Pointer & Touch Handlers
+  // Pointer & Touch Handlers (Multi-touch pinch-to-zoom & single-finger pan)
   const handlePointerDown = (e) => {
     if (!userImage) return;
+    setShowGestureHint(false);
     isDraggingRef.current = true;
     dragStartRef.current = {
       x: e.clientX - transform.x,
@@ -196,7 +205,7 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
     setTransform((prev) => {
       const nextScale = Math.max(0.1, Math.min(6, prev.scale * zoomFactor));
-      if (Math.abs(nextScale - lastTickScaleRef.current) > 0.1) {
+      if (Math.abs(nextScale - lastTickScaleRef.current) > 0.08) {
         sound.playDialTick();
         lastTickScaleRef.current = nextScale;
       }
@@ -204,9 +213,11 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     });
   };
 
-  // Pinch-to-zoom for mobile
+  // Pinch-to-zoom for mobile phones
   const handleTouchStart = (e) => {
     if (e.touches.length === 2) {
+      setShowGestureHint(false);
+      isDraggingRef.current = false;
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
@@ -223,10 +234,15 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
       );
       const factor = dist / touchDistanceRef.current;
       touchDistanceRef.current = dist;
-      setTransform((prev) => ({
-        ...prev,
-        scale: Math.max(0.1, Math.min(6, prev.scale * factor))
-      }));
+
+      setTransform((prev) => {
+        const nextScale = Math.max(0.1, Math.min(6, prev.scale * factor));
+        if (Math.abs(nextScale - lastTickScaleRef.current) > 0.1) {
+          sound.playDialTick();
+          lastTickScaleRef.current = nextScale;
+        }
+        return { ...prev, scale: nextScale };
+      });
     }
   };
 
@@ -280,30 +296,35 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     setFilters({ brightness: 100, contrast: 100, saturation: 100 });
   };
 
+  // Helper to generate composite high-res photo blob
+  const generateExportBlob = async () => {
+    return await exportHighResolutionPhoto({
+      canvasWidth: campaign.canvasWidth || 1080,
+      canvasHeight: campaign.canvasHeight || 1350,
+      userImage,
+      imageTransform: transform,
+      filterAdjustments: filters,
+      campaign,
+      frameImageElement: frameImage
+    });
+  };
+
   // Shutter Release & HD Export
   const handleShutterRelease = async () => {
     if (!userImage) {
       sound.playMechanicalClick();
-      fileInputRef.current?.click();
+      libraryInputRef.current?.click();
       return;
     }
 
     try {
       setIsExporting(true);
-      // Play authentic physical shutter release clack!
+      // Play authentic physical shutter sound and trigger haptic recoil vibration
       sound.playShutterSound();
 
-      const blob = await exportHighResolutionPhoto({
-        canvasWidth: campaign.canvasWidth || 1080,
-        canvasHeight: campaign.canvasHeight || 1350,
-        userImage,
-        imageTransform: transform,
-        filterAdjustments: filters,
-        campaign,
-        frameImageElement: frameImage
-      });
+      const blob = await generateExportBlob();
 
-      // Save file
+      // Trigger automatic save to device
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
@@ -313,7 +334,7 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
       document.body.removeChild(a);
       URL.revokeObjectURL(downloadUrl);
 
-      // Track analytics
+      // Record download analytics
       if (campaign?.id) {
         fetch(`/api/campaigns/${campaign.id}/analytics`, {
           method: 'POST',
@@ -339,43 +360,68 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     }
   };
 
+  // Native Mobile Share (Instagram Stories, WhatsApp, AirDrop, Camera Roll)
   const handleShare = async () => {
     sound.playMechanicalClick();
-    if (!navigator.share) {
-      navigator.clipboard.writeText(window.location.href);
-      alert('Event link copied! Share with friends on social media.');
+
+    if (!userImage) {
+      libraryInputRef.current?.click();
       return;
     }
 
     try {
-      await navigator.share({
-        title: campaign.eventTitle || campaign.name,
-        text: `Get your official branded event photo for ${campaign.name}:`,
-        url: window.location.href
-      });
-    } catch (e) {}
+      setIsExporting(true);
+      const blob = await generateExportBlob();
+      const filename = `${campaign.slug || 'event'}-frame.png`;
+      const file = new File([blob], filename, { type: 'image/png' });
+
+      // Check if browser supports native file sharing (iOS Safari, Android Chrome)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: campaign.eventTitle || campaign.name,
+          text: `Check out my official event photo for ${campaign.name}!`
+        });
+      } else if (navigator.share) {
+        await navigator.share({
+          title: campaign.eventTitle || campaign.name,
+          text: `Create your branded event photo frame:`,
+          url: window.location.href
+        });
+      } else {
+        // Fallback: copy event link to clipboard
+        navigator.clipboard.writeText(window.location.href);
+        alert('Event link copied to clipboard!');
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.warn('Share note:', err.message);
+      }
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
-    <div style={{ maxWidth: 840, margin: '0 auto', padding: '24px 16px 80px' }}>
+    <div style={{ maxWidth: 840, margin: '0 auto', padding: '12px 10px 100px' }}>
       {/* Campaign Quick Selector Bar */}
       {campaigns.length > 1 && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 10,
-          marginBottom: 24,
+          gap: 8,
+          marginBottom: 16,
           flexWrap: 'wrap'
         }}>
-          <span className="engraved-text" style={{ fontSize: '0.75rem' }}>
-            FRAME SLOT:
+          <span className="engraved-text" style={{ fontSize: '0.7rem' }}>
+            FRAME:
           </span>
           <div style={{
             display: 'flex',
             gap: 6,
             background: '#090b14',
-            padding: 4,
+            padding: 3,
             borderRadius: 'var(--radius-lg)',
             boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.08)'
           }}>
@@ -388,8 +434,8 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
                 }}
                 className={`btn-tactile ${c.id === campaign?.id ? 'active' : ''}`}
                 style={{
-                  padding: '6px 14px',
-                  fontSize: '0.8rem',
+                  padding: '5px 12px',
+                  fontSize: '0.75rem',
                   borderRadius: 'var(--radius-md)'
                 }}
               >
@@ -406,35 +452,36 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
         className="camera-chassis" 
-        style={{ padding: '24px 20px 28px' }}
+        style={{ padding: '20px 16px 24px' }}
       >
         {/* 4 Corner Mechanical Chassis Screws */}
-        <div className="chassis-screw" style={{ top: 12, left: 12 }} />
-        <div className="chassis-screw" style={{ top: 12, right: 12 }} />
-        <div className="chassis-screw" style={{ bottom: 12, left: 12 }} />
-        <div className="chassis-screw" style={{ bottom: 12, right: 12 }} />
+        <div className="chassis-screw" style={{ top: 10, left: 10 }} />
+        <div className="chassis-screw" style={{ top: 10, right: 10 }} />
+        <div className="chassis-screw" style={{ bottom: 10, left: 10 }} />
+        <div className="chassis-screw" style={{ bottom: 10, right: 10 }} />
 
         {/* Chassis Top Plate Bar */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingBottom: 16,
-          marginBottom: 16,
+          paddingBottom: 12,
+          marginBottom: 12,
           borderBottom: '1px solid rgba(0, 0, 0, 0.7)',
-          boxShadow: '0 1px 0 rgba(255, 255, 255, 0.08)'
+          boxShadow: '0 1px 0 rgba(255, 255, 255, 0.08)',
+          gap: 8
         }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="engraved-light" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className="engraved-light" style={{ fontSize: '0.9rem', fontWeight: 800 }}>
                 {campaign.eventTitle || campaign.name}
               </span>
-              <span className="engraved-text" style={{ fontSize: '0.65rem', background: '#0a0d16', padding: '2px 6px', borderRadius: 4 }}>
+              <span className="engraved-text" style={{ fontSize: '0.6rem', background: '#0a0d16', padding: '1px 5px', borderRadius: 3 }}>
                 {campaign.aspectRatio || '4:5'}
               </span>
             </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: 2 }}>
-              {campaign.description || 'Position photo within frame • Press shutter to download'}
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: 2 }}>
+              {campaign.tagline || 'Position photo within frame • Tap shutter to save'}
             </div>
           </div>
 
@@ -442,16 +489,17 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
+            gap: 6,
             background: '#090b14',
-            padding: '4px 10px',
+            padding: '4px 8px',
             borderRadius: 'var(--radius-sm)',
             border: '1px solid rgba(0,0,0,0.8)',
-            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.8)'
+            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.8)',
+            flexShrink: 0
           }}>
             <span className={`led-jewel ${isExporting ? 'led-amber' : userImage ? 'led-green' : 'led-blue'}`} />
-            <span className="engraved-text" style={{ fontSize: '0.65rem' }}>
-              {isExporting ? 'PROCESSING' : userImage ? 'HD CALIBRATED' : 'STANDBY'}
+            <span className="engraved-text" style={{ fontSize: '0.6rem' }}>
+              {isExporting ? 'EXPOSING' : userImage ? 'READY' : 'STANDBY'}
             </span>
           </div>
         </div>
@@ -474,7 +522,6 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            onClick={() => !userImage && fileInputRef.current?.click()}
           >
             <canvas
               ref={canvasRef}
@@ -486,6 +533,38 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
               }}
             />
 
+            {/* Gesture Hint Toast on Mobile */}
+            <AnimatePresence>
+              {showGestureHint && userImage && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  style={{
+                    position: 'absolute',
+                    bottom: 16,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'rgba(5, 8, 16, 0.88)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(56, 189, 248, 0.4)',
+                    color: '#f8fafc',
+                    padding: '6px 14px',
+                    borderRadius: 'var(--radius-full)',
+                    fontSize: '0.72rem',
+                    fontFamily: 'var(--font-mono)',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.8)',
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                    zIndex: 20
+                  }}
+                >
+                  👆 Drag photo • 🤏 Pinch to zoom
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Aperture Dropzone Overlay when empty */}
             {!userImage && (
               <div style={{
@@ -495,37 +574,88 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: 'radial-gradient(circle, rgba(12, 16, 28, 0.85) 0%, rgba(6, 8, 16, 0.95) 100%)',
-                padding: 24,
-                textAlign: 'center',
-                pointerEvents: 'none'
+                background: 'radial-gradient(circle, rgba(12, 16, 28, 0.88) 0%, rgba(6, 8, 16, 0.96) 100%)',
+                padding: '20px 16px',
+                textAlign: 'center'
               }}>
                 <div style={{
-                  width: 74,
-                  height: 74,
+                  width: 68,
+                  height: 68,
                   borderRadius: '50%',
                   background: 'radial-gradient(circle at 35% 35%, #334155 0%, #0f172a 70%, #020617 100%)',
-                  border: '3px solid rgba(255, 255, 255, 0.25)',
+                  border: '2px solid rgba(255, 255, 255, 0.25)',
                   boxShadow: '0 8px 24px rgba(0,0,0,0.8), inset 0 2px 4px rgba(255,255,255,0.4)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: 16
+                  marginBottom: 12
                 }}>
-                  <Aperture size={36} color="#38bdf8" />
+                  <Aperture size={32} color="#38bdf8" />
                 </div>
-                <h3 className="engraved-light" style={{ fontSize: '1.1rem', marginBottom: 6 }}>
-                  INSERT PHOTO
+
+                <h3 className="engraved-light" style={{ fontSize: '1.05rem', marginBottom: 4 }}>
+                  INSERT YOUR PHOTO
                 </h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Tap viewfinder or choose from camera roll
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 14 }}>
+                  Take a live photo or select from your camera roll
                 </p>
+
+                {/* Mobile Dual Action Buttons: Live Camera vs Library */}
+                <div style={{
+                  display: 'flex',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                  width: '100%',
+                  maxWidth: 320
+                }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      sound.playMechanicalClick();
+                      cameraInputRef.current?.click();
+                    }}
+                    className="btn-tactile"
+                    style={{
+                      background: 'linear-gradient(180deg, #2563eb 0%, #1d4ed8 60%, #1e3a8a 100%)',
+                      color: '#ffffff',
+                      flex: 1,
+                      padding: '10px 12px',
+                      fontSize: '0.82rem',
+                      minWidth: 130
+                    }}
+                  >
+                    <Camera size={16} />
+                    <span>Take Photo</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      sound.playMechanicalClick();
+                      libraryInputRef.current?.click();
+                    }}
+                    className="btn-tactile"
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      fontSize: '0.82rem',
+                      minWidth: 130
+                    }}
+                  >
+                    <ImageIcon size={16} />
+                    <span>Choose Photo</span>
+                  </button>
+                </div>
+
                 <div style={{
                   marginTop: 14,
-                  fontSize: '0.7rem',
+                  fontSize: '0.65rem',
                   color: '#94a3b8',
                   background: '#090b14',
-                  padding: '4px 12px',
+                  padding: '3px 10px',
                   borderRadius: 'var(--radius-full)',
                   boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.8)'
                 }}>
@@ -538,17 +668,17 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
             {userImage && (
               <div style={{
                 position: 'absolute',
-                top: 10,
-                left: 10,
-                right: 10,
+                top: 8,
+                left: 8,
+                right: 8,
                 display: 'flex',
                 justifyContent: 'space-between',
                 pointerEvents: 'none'
               }}>
-                <span className="engraved-text" style={{ fontSize: '0.65rem', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 3 }}>
-                  ISO AUTO • 1080P
+                <span className="engraved-text" style={{ fontSize: '0.6rem', background: 'rgba(0,0,0,0.6)', padding: '2px 5px', borderRadius: 3 }}>
+                  HD 1080P
                 </span>
-                <span className="engraved-text" style={{ fontSize: '0.65rem', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 3 }}>
+                <span className="engraved-text" style={{ fontSize: '0.6rem', background: 'rgba(0,0,0,0.6)', padding: '2px 5px', borderRadius: 3 }}>
                   ZOOM: {Math.round(transform.scale * 100)}%
                 </span>
               </div>
@@ -556,26 +686,41 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
           </div>
         </div>
 
-        {/* Hidden File Picker */}
+        {/* Hidden File Pickers (Back Camera, Front Selfie, Photo Library) */}
         <input
-          ref={fileInputRef}
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handlePhotoSelect}
+          style={{ display: 'none' }}
+        />
+        <input
+          ref={selfieInputRef}
           type="file"
           accept="image/*"
           capture="user"
           onChange={handlePhotoSelect}
           style={{ display: 'none' }}
         />
+        <input
+          ref={libraryInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handlePhotoSelect}
+          style={{ display: 'none' }}
+        />
 
         {/* Hardware Control Console below Viewfinder */}
         {userImage && (
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: 16 }}>
             {/* Knurled Rotary Zoom Dial */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <span className="engraved-text" style={{ fontSize: '0.7rem' }}>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span className="engraved-text" style={{ fontSize: '0.68rem' }}>
                   FOCAL ZOOM WHEEL
                 </span>
-                <span className="engraved-light" style={{ fontSize: '0.75rem' }}>
+                <span className="engraved-light" style={{ fontSize: '0.72rem' }}>
                   {Math.round(transform.scale * 100)}%
                 </span>
               </div>
@@ -594,23 +739,38 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
               </div>
             </div>
 
-            {/* Tactile Rocker Switch Bar */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+            {/* Tactile Hardware Action Bar (Optimized for Mobile Thumb Taps) */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(5, 1fr)',
+              gap: 6,
+              marginBottom: 14
+            }}>
               <button 
-                onClick={() => fileInputRef.current?.click()} 
+                onClick={() => cameraInputRef.current?.click()} 
                 className="btn-tactile"
-                title="Replace Photo"
-                style={{ fontSize: '0.75rem', padding: '8px 6px' }}
+                title="Take New Photo with Camera"
+                style={{ fontSize: '0.72rem', padding: '8px 4px', flexDirection: 'column', gap: 3 }}
               >
-                <Upload size={14} />
-                <span>Change</span>
+                <Camera size={14} />
+                <span>Camera</span>
+              </button>
+
+              <button 
+                onClick={() => libraryInputRef.current?.click()} 
+                className="btn-tactile"
+                title="Choose from Photo Library"
+                style={{ fontSize: '0.72rem', padding: '8px 4px', flexDirection: 'column', gap: 3 }}
+              >
+                <ImageIcon size={14} />
+                <span>Library</span>
               </button>
 
               <button 
                 onClick={handleRotate} 
                 className="btn-tactile"
                 title="Rotate 90 degrees"
-                style={{ fontSize: '0.75rem', padding: '8px 6px' }}
+                style={{ fontSize: '0.72rem', padding: '8px 4px', flexDirection: 'column', gap: 3 }}
               >
                 <RotateCw size={14} />
                 <span>Rotate</span>
@@ -620,7 +780,7 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
                 onClick={handleFlip} 
                 className="btn-tactile"
                 title="Flip Horizontal"
-                style={{ fontSize: '0.75rem', padding: '8px 6px' }}
+                style={{ fontSize: '0.72rem', padding: '8px 4px', flexDirection: 'column', gap: 3 }}
               >
                 <FlipHorizontal size={14} />
                 <span>Flip</span>
@@ -633,7 +793,7 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
                 }} 
                 className={`btn-tactile ${showStudioFilters ? 'active' : ''}`}
                 title="Studio Color Grading"
-                style={{ fontSize: '0.75rem', padding: '8px 6px' }}
+                style={{ fontSize: '0.72rem', padding: '8px 4px', flexDirection: 'column', gap: 3 }}
               >
                 <Sliders size={14} />
                 <span>Tune</span>
@@ -652,16 +812,16 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
                     overflow: 'hidden',
                     background: '#090c16',
                     borderRadius: 'var(--radius-md)',
-                    padding: 14,
+                    padding: '12px 10px',
                     boxShadow: 'var(--recessed-inner)',
-                    marginBottom: 16,
+                    marginBottom: 14,
                     border: '1px solid rgba(0,0,0,0.8)'
                   }}
                 >
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.7rem', color: '#94a3b8', marginBottom: 4 }}>
-                        <Sun size={12} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem', color: '#94a3b8', marginBottom: 2 }}>
+                        <Sun size={11} />
                         <span>Brightness</span>
                       </div>
                       <input
@@ -674,8 +834,8 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
                     </div>
 
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.7rem', color: '#94a3b8', marginBottom: 4 }}>
-                        <Contrast size={12} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem', color: '#94a3b8', marginBottom: 2 }}>
+                        <Contrast size={11} />
                         <span>Contrast</span>
                       </div>
                       <input
@@ -688,8 +848,8 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
                     </div>
 
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.7rem', color: '#94a3b8', marginBottom: 4 }}>
-                        <Palette size={12} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem', color: '#94a3b8', marginBottom: 2 }}>
+                        <Palette size={11} />
                         <span>Warmth</span>
                       </div>
                       <input
@@ -701,14 +861,31 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
                       />
                     </div>
                   </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className="btn-tactile"
+                      style={{ fontSize: '0.68rem', padding: '4px 10px' }}
+                    >
+                      <RefreshCw size={11} />
+                      <span>Reset View & Tone</span>
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         )}
 
-        {/* Master Shutter Action Assembly */}
-        <div style={{ marginTop: 22, display: 'grid', gridTemplateColumns: userImage ? '1fr auto' : '1fr', gap: 12 }}>
+        {/* Master Shutter Action Assembly (Mobile-Friendly Ergonomics) */}
+        <div style={{
+          marginTop: 18,
+          display: 'grid',
+          gridTemplateColumns: userImage ? '1fr auto' : '1fr',
+          gap: 10
+        }}>
           <motion.button
             whileTap={{ scale: 0.97, y: 3 }}
             onClick={handleShutterRelease}
@@ -716,11 +893,11 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
             className="btn-shutter"
           >
             {downloadSuccess ? (
-              <Check size={22} color="#ffffff" />
+              <Check size={20} color="#ffffff" />
             ) : !userImage ? (
-              <Upload size={22} color="#ffffff" />
+              <Camera size={20} color="#ffffff" />
             ) : (
-              <Camera size={22} color="#ffffff" />
+              <Camera size={20} color="#ffffff" />
             )}
             <span>
               {isExporting 
@@ -728,19 +905,20 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
                 : downloadSuccess 
                 ? 'SAVED TO DEVICE!' 
                 : !userImage 
-                ? 'INSERT PHOTO TO BEGIN' 
-                : 'RELEASE SHUTTER • DOWNLOAD HD'}
+                ? 'ADD PHOTO TO BEGIN' 
+                : 'RELEASE SHUTTER • SAVE HD'}
             </span>
           </motion.button>
 
           {userImage && (
             <button
               onClick={handleShare}
+              disabled={isExporting}
               className="btn-tactile btn-tactile-icon"
-              title="Share Event Frame Link"
-              style={{ width: 56, height: '100%', borderRadius: 'var(--radius-lg)' }}
+              title="Share Event Photo (Instagram / WhatsApp / AirDrop)"
+              style={{ width: 50, height: '100%', borderRadius: 'var(--radius-lg)' }}
             >
-              <Share2 size={20} />
+              <Share2 size={19} color="#38bdf8" />
             </button>
           )}
         </div>
@@ -750,14 +928,14 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginTop: 18,
-          fontSize: '0.68rem'
+          marginTop: 16,
+          fontSize: '0.65rem'
         }}>
           <span className="engraved-text">
             CALIBRATION: {campaign.canvasWidth} × {campaign.canvasHeight} PX
           </span>
           <span className="engraved-text">
-            PRECISION 60FPS COMPOSITOR
+            60FPS COMPOSITOR
           </span>
         </div>
       </motion.div>

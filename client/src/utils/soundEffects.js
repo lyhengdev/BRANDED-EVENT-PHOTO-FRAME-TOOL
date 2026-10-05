@@ -1,6 +1,7 @@
 /**
  * Zero-latency Web Audio Synthesizer for Skeuomorphic Tactile Hardware Feedback
  * Synthesizes camera shutter, mechanical switches, and rotary dial clicks.
+ * Includes mobile hardware haptic vibration feedback for native camera feel.
  */
 
 class SoundEngine {
@@ -21,6 +22,16 @@ class SoundEngine {
     }
   }
 
+  vibrate(pattern = 10) {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try {
+        navigator.vibrate(pattern);
+      } catch {
+        // Ignore vibration errors on unsupported devices
+      }
+    }
+  }
+
   toggleSound() {
     this.enabled = !this.enabled;
     if (typeof window !== 'undefined') {
@@ -38,6 +49,7 @@ class SoundEngine {
 
   // Crisp mechanical tactile switch click
   playMechanicalClick() {
+    this.vibrate(10);
     if (!this.enabled) return;
     this.init();
     if (!this.ctx) return;
@@ -61,6 +73,7 @@ class SoundEngine {
 
   // Knurled rotary dial ratchet tick
   playDialTick() {
+    this.vibrate(6);
     if (!this.enabled) return;
     this.init();
     if (!this.ctx) return;
@@ -82,8 +95,9 @@ class SoundEngine {
     osc.stop(this.ctx.currentTime + 0.015);
   }
 
-  // Authentic mechanical SLR / Leica camera shutter release clack
+  // Authentic mechanical SLR / Leica camera shutter release clack with physical recoil
   playShutterSound() {
+    this.vibrate([35, 20, 65]);
     if (!this.enabled) return;
     this.init();
     if (!this.ctx) return;
