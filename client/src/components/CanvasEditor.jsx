@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { 
   Upload, Download, RotateCw, ZoomIn, ZoomOut, RefreshCw, 
-  FlipHorizontal, Sparkles, Share2, Check, Smartphone, Camera,
-  Sliders, Maximize2
+  FlipHorizontal, Sparkles, Share2, Check, Camera, Sliders,
+  Sun, Contrast, Palette, Aperture, Eye
 } from 'lucide-react';
 import { drawFramePreset, exportHighResolutionPhoto } from '../utils/frameRenderer';
+import { sound } from '../utils/soundEffects';
 
 export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaign }) {
   const [userImage, setUserImage] = useState(null);
@@ -13,8 +15,9 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
   const [frameImage, setFrameImage] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [showStudioFilters, setShowStudioFilters] = useState(false);
 
-  // Transform state for user photo
+  // Transform state for user photo inside viewfinder
   const [transform, setTransform] = useState({
     x: 0,
     y: 0,
@@ -24,14 +27,19 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     flipV: false
   });
 
+  // Studio color grading adjustments
+  const [filters, setFilters] = useState({
+    brightness: 100,
+    contrast: 100,
+    saturation: 100
+  });
+
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
-  const containerRef = useRef(null);
-
-  // Dragging / Touch state
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const touchDistanceRef = useRef(null);
+  const lastTickScaleRef = useRef(1);
 
   // Track visit analytics on mount
   useEffect(() => {
@@ -43,7 +51,7 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     }).catch(() => {});
   }, [campaign?.id]);
 
-  // Load custom frame image if frameType is uploaded
+  // Load custom frame image if uploaded
   useEffect(() => {
     if (campaign?.frameUrl && campaign?.frameType === 'uploaded') {
       const img = new Image();
@@ -56,10 +64,12 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     }
   }, [campaign]);
 
-  // Handle User Photo Upload
+  // Handle Photo Upload
   const handlePhotoSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    sound.playMechanicalClick();
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -68,13 +78,11 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
         setUserImage(img);
         setUserImageSrc(event.target.result);
 
-        // Reset transform to nicely center and fit photo
         const canvasW = campaign.canvasWidth || 1080;
         const canvasH = campaign.canvasHeight || 1350;
         const imgW = img.naturalWidth || img.width;
         const imgH = img.naturalHeight || img.height;
 
-        // Cover / fit ratio
         const scaleX = canvasW / imgW;
         const scaleY = canvasH / imgH;
         const initialScale = Math.max(scaleX, scaleY) * 1.02;
@@ -111,22 +119,24 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     const width = campaign.canvasWidth || 1080;
     const height = campaign.canvasHeight || 1350;
 
-    // Set internal resolution
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width;
       canvas.height = height;
     }
 
-    // Clear background
     ctx.clearRect(0, 0, width, height);
 
-    // 1. Draw solid background
-    ctx.fillStyle = '#090b14';
+    // 1. Solid camera sensor dark well
+    ctx.fillStyle = '#060810';
     ctx.fillRect(0, 0, width, height);
 
-    // 2. Draw user photo
+    // 2. Draw user photo with transforms and studio color grading
     if (userImage) {
       ctx.save();
+
+      // Apply CSS filter on context
+      ctx.filter = `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturation}%)`;
+
       const centerX = width / 2 + transform.x;
       const centerY = height / 2 + transform.y;
       ctx.translate(centerX, centerY);
@@ -140,25 +150,21 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
       const imgH = userImage.naturalHeight || userImage.height;
       ctx.drawImage(userImage, -imgW / 2, -imgH / 2, imgW, imgH);
       ctx.restore();
-    } else {
-      // Placeholder illustration when empty
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-      ctx.fillRect(40, 40, width - 80, height - 80);
     }
 
-    // 3. Draw frame layer on top
+    // 3. Draw fixed frame layer
     if (frameImage && frameImage.complete && frameImage.naturalWidth > 0) {
       ctx.drawImage(frameImage, 0, 0, width, height);
     } else {
       drawFramePreset(ctx, width, height, campaign);
     }
-  }, [campaign, userImage, transform, frameImage]);
+  }, [campaign, userImage, transform, filters, frameImage]);
 
   useEffect(() => {
     renderCanvas();
   }, [renderCanvas]);
 
-  // Pointer & Touch Handlers for panning and zooming
+  // Pointer & Touch Handlers
   const handlePointerDown = (e) => {
     if (!userImage) return;
     isDraggingRef.current = true;
@@ -183,18 +189,22 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     e.target.releasePointerCapture?.(e.pointerId);
   };
 
-  // Mouse wheel zoom
+  // Mouse wheel zoom with dial sound
   const handleWheel = (e) => {
     if (!userImage) return;
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-    setTransform((prev) => ({
-      ...prev,
-      scale: Math.max(0.1, Math.min(6, prev.scale * zoomFactor))
-    }));
+    setTransform((prev) => {
+      const nextScale = Math.max(0.1, Math.min(6, prev.scale * zoomFactor));
+      if (Math.abs(nextScale - lastTickScaleRef.current) > 0.1) {
+        sound.playDialTick();
+        lastTickScaleRef.current = nextScale;
+      }
+      return { ...prev, scale: nextScale };
+    });
   };
 
-  // Touch gesture pinch-to-zoom
+  // Pinch-to-zoom for mobile
   const handleTouchStart = (e) => {
     if (e.touches.length === 2) {
       const dist = Math.hypot(
@@ -225,15 +235,17 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
   };
 
   // Controls actions
-  const handleZoom = (direction) => {
-    const factor = direction === 'in' ? 1.15 : 0.85;
-    setTransform((prev) => ({
-      ...prev,
-      scale: Math.max(0.1, Math.min(6, prev.scale * factor))
-    }));
+  const handleZoomChange = (newVal) => {
+    const scale = parseFloat(newVal);
+    if (Math.abs(scale - lastTickScaleRef.current) > 0.08) {
+      sound.playDialTick();
+      lastTickScaleRef.current = scale;
+    }
+    setTransform((prev) => ({ ...prev, scale }));
   };
 
   const handleRotate = () => {
+    sound.playMechanicalClick();
     setTransform((prev) => ({
       ...prev,
       rotation: (prev.rotation + 90) % 360
@@ -241,6 +253,7 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
   };
 
   const handleFlip = () => {
+    sound.playMechanicalClick();
     setTransform((prev) => ({
       ...prev,
       flipH: !prev.flipH
@@ -248,6 +261,7 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
   };
 
   const handleReset = () => {
+    sound.playMechanicalClick();
     if (!userImage) return;
     const canvasW = campaign.canvasWidth || 1080;
     const canvasH = campaign.canvasHeight || 1350;
@@ -263,28 +277,33 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
       flipH: false,
       flipV: false
     });
+    setFilters({ brightness: 100, contrast: 100, saturation: 100 });
   };
 
-  // High-Res Export & Download
-  const handleDownload = async () => {
+  // Shutter Release & HD Export
+  const handleShutterRelease = async () => {
     if (!userImage) {
+      sound.playMechanicalClick();
       fileInputRef.current?.click();
       return;
     }
 
     try {
       setIsExporting(true);
+      // Play authentic physical shutter release clack!
+      sound.playShutterSound();
 
       const blob = await exportHighResolutionPhoto({
         canvasWidth: campaign.canvasWidth || 1080,
         canvasHeight: campaign.canvasHeight || 1350,
         userImage,
         imageTransform: transform,
+        filterAdjustments: filters,
         campaign,
         frameImageElement: frameImage
       });
 
-      // Trigger download
+      // Save file
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
@@ -303,10 +322,10 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
         }).catch(() => {});
       }
 
-      // Celebrate
+      // Shutter celebration confetti
       confetti({
-        particleCount: 80,
-        spread: 70,
+        particleCount: 90,
+        spread: 75,
         origin: { y: 0.7 }
       });
 
@@ -320,28 +339,26 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
     }
   };
 
-  // Social Share using Web Share API
   const handleShare = async () => {
+    sound.playMechanicalClick();
     if (!navigator.share) {
       navigator.clipboard.writeText(window.location.href);
-      alert('Link copied to clipboard! Share it with friends.');
+      alert('Event link copied! Share with friends on social media.');
       return;
     }
 
     try {
       await navigator.share({
         title: campaign.eventTitle || campaign.name,
-        text: `Check out my official branded photo for ${campaign.name}! Get yours here:`,
+        text: `Get your official branded event photo for ${campaign.name}:`,
         url: window.location.href
       });
-    } catch (e) {
-      // User cancelled share
-    }
+    } catch (e) {}
   };
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 80px' }}>
-      {/* Campaign Selector Pill (Quick switcher for demos/testing) */}
+    <div style={{ maxWidth: 840, margin: '0 auto', padding: '24px 16px 80px' }}>
+      {/* Campaign Quick Selector Bar */}
       {campaigns.length > 1 && (
         <div style={{
           display: 'flex',
@@ -351,16 +368,30 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
           marginBottom: 24,
           flexWrap: 'wrap'
         }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Event Frame:
+          <span className="engraved-text" style={{ fontSize: '0.75rem' }}>
+            FRAME SLOT:
           </span>
-          <div style={{ display: 'flex', gap: 8, background: 'rgba(255,255,255,0.04)', padding: 4, borderRadius: 'var(--radius-full)' }}>
+          <div style={{
+            display: 'flex',
+            gap: 6,
+            background: '#090b14',
+            padding: 4,
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.08)'
+          }}>
             {campaigns.map((c) => (
               <button
                 key={c.id}
-                onClick={() => onSelectCampaign(c)}
-                className={`btn btn-sm ${c.id === campaign?.id ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ borderRadius: 'var(--radius-full)', padding: '6px 14px' }}
+                onClick={() => {
+                  sound.playMechanicalClick();
+                  onSelectCampaign(c);
+                }}
+                className={`btn-tactile ${c.id === campaign?.id ? 'active' : ''}`}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '0.8rem',
+                  borderRadius: 'var(--radius-md)'
+                }}
               >
                 {c.name}
               </button>
@@ -369,67 +400,72 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
         </div>
       )}
 
-      {/* Event Header Banner */}
-      <div style={{ textAlign: 'center', marginBottom: 28 }} className="animate-fade-in">
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          background: 'rgba(99, 102, 241, 0.12)',
-          color: '#818cf8',
-          border: '1px solid rgba(99, 102, 241, 0.25)',
-          padding: '4px 14px',
-          borderRadius: 'var(--radius-full)',
-          fontSize: '0.8rem',
-          fontWeight: 700,
-          marginBottom: 10
-        }}>
-          <Sparkles size={14} />
-          <span>{campaign?.eventTitle || 'OFFICIAL EVENT CAMPAIGN'}</span>
-        </div>
-        <h1 style={{ fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', color: '#ffffff', marginBottom: 8 }}>
-          {campaign?.name || 'Branded Photo Frame'}
-        </h1>
-        <p style={{ maxWidth: 540, margin: '0 auto', fontSize: '0.95rem' }}>
-          {campaign?.description || 'Upload your photo, adjust to fit the official frame, and download your high-res badge!'}
-        </p>
-      </div>
+      {/* Main Skeuomorphic Camera Chassis */}
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="camera-chassis" 
+        style={{ padding: '24px 20px 28px' }}
+      >
+        {/* 4 Corner Mechanical Chassis Screws */}
+        <div className="chassis-screw" style={{ top: 12, left: 12 }} />
+        <div className="chassis-screw" style={{ top: 12, right: 12 }} />
+        <div className="chassis-screw" style={{ bottom: 12, left: 12 }} />
+        <div className="chassis-screw" style={{ bottom: 12, right: 12 }} />
 
-      {/* Editor Main Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(300px, 480px)',
-        justifyContent: 'center',
-        gap: 24,
-        margin: '0 auto'
-      }}>
-        {/* Canvas Display Viewport */}
-        <div 
-          ref={containerRef}
-          className="glass-panel"
-          style={{
-            position: 'relative',
-            padding: 12,
-            background: 'rgba(15, 18, 32, 0.8)',
+        {/* Chassis Top Plate Bar */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingBottom: 16,
+          marginBottom: 16,
+          borderBottom: '1px solid rgba(0, 0, 0, 0.7)',
+          boxShadow: '0 1px 0 rgba(255, 255, 255, 0.08)'
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="engraved-light" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
+                {campaign.eventTitle || campaign.name}
+              </span>
+              <span className="engraved-text" style={{ fontSize: '0.65rem', background: '#0a0d16', padding: '2px 6px', borderRadius: 4 }}>
+                {campaign.aspectRatio || '4:5'}
+              </span>
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: 2 }}>
+              {campaign.description || 'Position photo within frame • Press shutter to download'}
+            </div>
+          </div>
+
+          {/* Calibrated Sensor LED */}
+          <div style={{
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
-            boxShadow: 'var(--shadow-lg)'
-          }}
-        >
-          {/* Canvas Wrapper with Target Aspect Ratio */}
+            gap: 8,
+            background: '#090b14',
+            padding: '4px 10px',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid rgba(0,0,0,0.8)',
+            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.8)'
+          }}>
+            <span className={`led-jewel ${isExporting ? 'led-amber' : userImage ? 'led-green' : 'led-blue'}`} />
+            <span className="engraved-text" style={{ fontSize: '0.65rem' }}>
+              {isExporting ? 'PROCESSING' : userImage ? 'HD CALIBRATED' : 'STANDBY'}
+            </span>
+          </div>
+        </div>
+
+        {/* Viewfinder Assembly */}
+        <div className="viewfinder-recess" style={{ margin: '0 auto', maxWidth: 440 }}>
           <div 
-            className="checker-bg"
+            className="viewfinder-glass checker-bg"
             style={{
               position: 'relative',
               width: '100%',
-              maxWidth: 440,
               aspectRatio: `${campaign.canvasWidth} / ${campaign.canvasHeight}`,
-              borderRadius: 'var(--radius-md)',
-              overflow: 'hidden',
               cursor: userImage ? 'grab' : 'pointer',
-              touchAction: 'none',
-              boxShadow: 'inset 0 0 20px rgba(0,0,0,0.6)'
+              touchAction: 'none'
             }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
@@ -450,7 +486,7 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
               }}
             />
 
-            {/* Empty Upload Prompt Overlay */}
+            {/* Aperture Dropzone Overlay when empty */}
             {!userImage && (
               <div style={{
                 position: 'absolute',
@@ -459,202 +495,272 @@ export default function CanvasEditor({ campaign, campaigns = [], onSelectCampaig
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: 'rgba(9, 12, 22, 0.7)',
-                backdropFilter: 'blur(4px)',
+                background: 'radial-gradient(circle, rgba(12, 16, 28, 0.85) 0%, rgba(6, 8, 16, 0.95) 100%)',
                 padding: 24,
                 textAlign: 'center',
                 pointerEvents: 'none'
               }}>
                 <div style={{
-                  width: 64,
-                  height: 64,
+                  width: 74,
+                  height: 74,
                   borderRadius: '50%',
-                  background: 'var(--gradient-brand)',
+                  background: 'radial-gradient(circle at 35% 35%, #334155 0%, #0f172a 70%, #020617 100%)',
+                  border: '3px solid rgba(255, 255, 255, 0.25)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.8), inset 0 2px 4px rgba(255,255,255,0.4)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: 'var(--shadow-glow)',
                   marginBottom: 16
                 }}>
-                  <Camera size={30} color="#fff" />
+                  <Aperture size={36} color="#38bdf8" />
                 </div>
-                <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: 6 }}>
-                  Tap to Add Your Photo
+                <h3 className="engraved-light" style={{ fontSize: '1.1rem', marginBottom: 6 }}>
+                  INSERT PHOTO
                 </h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Take a selfie or select an image from your gallery
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Tap viewfinder or choose from camera roll
                 </p>
                 <div style={{
-                  marginTop: 16,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: '0.75rem',
+                  marginTop: 14,
+                  fontSize: '0.7rem',
                   color: '#94a3b8',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-full)'
+                  background: '#090b14',
+                  padding: '4px 12px',
+                  borderRadius: 'var(--radius-full)',
+                  boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.8)'
                 }}>
-                  <span>🔒 Processed 100% locally in your browser</span>
+                  🔒 100% In-Browser Optical Privacy
                 </div>
               </div>
             )}
 
-            {/* Gesture Helper Badge */}
+            {/* Viewfinder HUD Focal Markings */}
             {userImage && (
               <div style={{
                 position: 'absolute',
-                top: 12,
-                left: 12,
-                background: 'rgba(0,0,0,0.65)',
-                backdropFilter: 'blur(6px)',
-                padding: '4px 10px',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '0.7rem',
-                color: '#e2e8f0',
-                pointerEvents: 'none',
+                top: 10,
+                left: 10,
+                right: 10,
                 display: 'flex',
-                alignItems: 'center',
-                gap: 6
+                justifyContent: 'space-between',
+                pointerEvents: 'none'
               }}>
-                <span>👆 Drag to position • Pinch to zoom</span>
+                <span className="engraved-text" style={{ fontSize: '0.65rem', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 3 }}>
+                  ISO AUTO • 1080P
+                </span>
+                <span className="engraved-text" style={{ fontSize: '0.65rem', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 3 }}>
+                  ZOOM: {Math.round(transform.scale * 100)}%
+                </span>
               </div>
             )}
           </div>
+        </div>
 
-          {/* Hidden File Input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="user"
-            onChange={handlePhotoSelect}
-            style={{ display: 'none' }}
-          />
+        {/* Hidden File Picker */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="user"
+          onChange={handlePhotoSelect}
+          style={{ display: 'none' }}
+        />
 
-          {/* Canvas Adjustments Controls */}
-          {userImage && (
-            <div style={{ width: '100%', marginTop: 16 }}>
-              {/* Zoom Slider */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <button 
-                  onClick={() => handleZoom('out')} 
-                  className="btn btn-ghost btn-sm"
-                  title="Zoom Out"
-                >
-                  <ZoomOut size={16} />
-                </button>
-
-                <input
-                  type="range"
-                  min="0.2"
-                  max="4"
-                  step="0.05"
-                  value={transform.scale}
-                  onChange={(e) => setTransform(prev => ({ ...prev, scale: parseFloat(e.target.value) }))}
-                />
-
-                <button 
-                  onClick={() => handleZoom('in')} 
-                  className="btn btn-ghost btn-sm"
-                  title="Zoom In"
-                >
-                  <ZoomIn size={16} />
-                </button>
-
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', minWidth: 42, textAlign: 'right' }}>
+        {/* Hardware Control Console below Viewfinder */}
+        {userImage && (
+          <div style={{ marginTop: 20 }}>
+            {/* Knurled Rotary Zoom Dial */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span className="engraved-text" style={{ fontSize: '0.7rem' }}>
+                  FOCAL ZOOM WHEEL
+                </span>
+                <span className="engraved-light" style={{ fontSize: '0.75rem' }}>
                   {Math.round(transform.scale * 100)}%
                 </span>
               </div>
 
-              {/* Action Buttons Row */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                <button 
-                  onClick={() => fileInputRef.current?.click()} 
-                  className="btn btn-secondary btn-sm"
-                  style={{ flex: 1 }}
-                >
-                  <Upload size={14} />
-                  <span>Change Photo</span>
-                </button>
-
-                <button 
-                  onClick={handleRotate} 
-                  className="btn btn-secondary btn-sm"
-                  title="Rotate 90 degrees"
-                >
-                  <RotateCw size={14} />
-                </button>
-
-                <button 
-                  onClick={handleFlip} 
-                  className="btn btn-secondary btn-sm"
-                  title="Flip Horizontal"
-                >
-                  <FlipHorizontal size={14} />
-                </button>
-
-                <button 
-                  onClick={handleReset} 
-                  className="btn btn-secondary btn-sm"
-                  title="Reset alignment"
-                >
-                  <RefreshCw size={14} />
-                </button>
+              <div className="knurled-track">
+                <div className="dial-ticks" />
+                <input
+                  type="range"
+                  min="0.2"
+                  max="4"
+                  step="0.02"
+                  value={transform.scale}
+                  onChange={(e) => handleZoomChange(e.target.value)}
+                  style={{ position: 'relative', zIndex: 2 }}
+                />
               </div>
             </div>
-          )}
 
-          {/* Primary Call to Action Button */}
-          <div style={{ width: '100%', marginTop: 20 }}>
-            {!userImage ? (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="btn btn-primary btn-lg"
-                style={{ width: '100%' }}
+            {/* Tactile Rocker Switch Bar */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+              <button 
+                onClick={() => fileInputRef.current?.click()} 
+                className="btn-tactile"
+                title="Replace Photo"
+                style={{ fontSize: '0.75rem', padding: '8px 6px' }}
               >
-                <Upload size={20} />
-                <span>Upload Your Photo</span>
+                <Upload size={14} />
+                <span>Change</span>
               </button>
+
+              <button 
+                onClick={handleRotate} 
+                className="btn-tactile"
+                title="Rotate 90 degrees"
+                style={{ fontSize: '0.75rem', padding: '8px 6px' }}
+              >
+                <RotateCw size={14} />
+                <span>Rotate</span>
+              </button>
+
+              <button 
+                onClick={handleFlip} 
+                className="btn-tactile"
+                title="Flip Horizontal"
+                style={{ fontSize: '0.75rem', padding: '8px 6px' }}
+              >
+                <FlipHorizontal size={14} />
+                <span>Flip</span>
+              </button>
+
+              <button 
+                onClick={() => {
+                  sound.playMechanicalClick();
+                  setShowStudioFilters(!showStudioFilters);
+                }} 
+                className={`btn-tactile ${showStudioFilters ? 'active' : ''}`}
+                title="Studio Color Grading"
+                style={{ fontSize: '0.75rem', padding: '8px 6px' }}
+              >
+                <Sliders size={14} />
+                <span>Tune</span>
+              </button>
+            </div>
+
+            {/* Studio Filter Tuning Tray */}
+            <AnimatePresence>
+              {showStudioFilters && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  style={{
+                    overflow: 'hidden',
+                    background: '#090c16',
+                    borderRadius: 'var(--radius-md)',
+                    padding: 14,
+                    boxShadow: 'var(--recessed-inner)',
+                    marginBottom: 16,
+                    border: '1px solid rgba(0,0,0,0.8)'
+                  }}
+                >
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.7rem', color: '#94a3b8', marginBottom: 4 }}>
+                        <Sun size={12} />
+                        <span>Brightness</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="70"
+                        max="140"
+                        value={filters.brightness}
+                        onChange={(e) => setFilters(p => ({ ...p, brightness: Number(e.target.value) }))}
+                      />
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.7rem', color: '#94a3b8', marginBottom: 4 }}>
+                        <Contrast size={12} />
+                        <span>Contrast</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="70"
+                        max="140"
+                        value={filters.contrast}
+                        onChange={(e) => setFilters(p => ({ ...p, contrast: Number(e.target.value) }))}
+                      />
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.7rem', color: '#94a3b8', marginBottom: 4 }}>
+                        <Palette size={12} />
+                        <span>Warmth</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="60"
+                        max="140"
+                        value={filters.saturation}
+                        onChange={(e) => setFilters(p => ({ ...p, saturation: Number(e.target.value) }))}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Master Shutter Action Assembly */}
+        <div style={{ marginTop: 22, display: 'grid', gridTemplateColumns: userImage ? '1fr auto' : '1fr', gap: 12 }}>
+          <motion.button
+            whileTap={{ scale: 0.97, y: 3 }}
+            onClick={handleShutterRelease}
+            disabled={isExporting}
+            className="btn-shutter"
+          >
+            {downloadSuccess ? (
+              <Check size={22} color="#ffffff" />
+            ) : !userImage ? (
+              <Upload size={22} color="#ffffff" />
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
-                <button
-                  onClick={handleDownload}
-                  disabled={isExporting}
-                  className="btn btn-primary btn-lg"
-                  style={{ width: '100%' }}
-                >
-                  {downloadSuccess ? <Check size={20} /> : <Download size={20} />}
-                  <span>{isExporting ? 'Generating HD...' : downloadSuccess ? 'Saved to Device!' : 'Download HD Photo'}</span>
-                </button>
-
-                <button
-                  onClick={handleShare}
-                  className="btn btn-secondary btn-lg"
-                  title="Share event link"
-                >
-                  <Share2 size={20} />
-                </button>
-              </div>
+              <Camera size={22} color="#ffffff" />
             )}
-          </div>
+            <span>
+              {isExporting 
+                ? 'EXPOSING HD FILM...' 
+                : downloadSuccess 
+                ? 'SAVED TO DEVICE!' 
+                : !userImage 
+                ? 'INSERT PHOTO TO BEGIN' 
+                : 'RELEASE SHUTTER • DOWNLOAD HD'}
+            </span>
+          </motion.button>
 
-          {/* Resolution Badge & Info */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 12,
-            marginTop: 16,
-            fontSize: '0.75rem',
-            color: 'var(--text-dim)'
-          }}>
-            <span>Resolution: {campaign.canvasWidth} × {campaign.canvasHeight} px</span>
-            <span>•</span>
-            <span>Aspect Ratio: {campaign.aspectRatio || 'Custom'}</span>
-          </div>
+          {userImage && (
+            <button
+              onClick={handleShare}
+              className="btn-tactile btn-tactile-icon"
+              title="Share Event Frame Link"
+              style={{ width: 56, height: '100%', borderRadius: 'var(--radius-lg)' }}
+            >
+              <Share2 size={20} />
+            </button>
+          )}
         </div>
-      </div>
+
+        {/* Calibration Engraving Footer */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: 18,
+          fontSize: '0.68rem'
+        }}>
+          <span className="engraved-text">
+            CALIBRATION: {campaign.canvasWidth} × {campaign.canvasHeight} PX
+          </span>
+          <span className="engraved-text">
+            PRECISION 60FPS COMPOSITOR
+          </span>
+        </div>
+      </motion.div>
     </div>
   );
 }

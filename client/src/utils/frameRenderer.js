@@ -1,6 +1,7 @@
 /**
  * High-definition Canvas Rendering and Compositing Engine
- * Supports custom uploaded PNG overlays as well as high-res procedural event frames.
+ * Supports custom uploaded PNG overlays as well as high-res procedural event frames,
+ * and studio color grading (Brightness, Contrast, Saturation).
  */
 
 export function drawFramePreset(ctx, width, height, campaign) {
@@ -14,7 +15,6 @@ export function drawFramePreset(ctx, width, height, campaign) {
 
   if (style === 'cyber-glow' || campaign.slug?.includes('mtf')) {
     // Tech Summit Cyber Aesthetic
-    // Outer border with subtle neon glow
     const borderWidth = Math.round(width * 0.035);
     ctx.lineWidth = borderWidth;
     const borderGrad = ctx.createLinearGradient(0, 0, width, height);
@@ -53,7 +53,6 @@ export function drawFramePreset(ctx, width, height, campaign) {
     // Top badge tag
     ctx.font = `bold ${Math.round(width * 0.024)}px "Space Grotesk", sans-serif`;
     ctx.fillStyle = accentColor;
-    ctx.letterSpacing = '2px';
     ctx.fillText('⚡ OFFICIAL PARTICIPANT', borderWidth + 24, borderWidth + headerHeight * 0.6);
 
     ctx.font = `900 ${Math.round(width * 0.022)}px "Outfit", sans-serif`;
@@ -179,13 +178,14 @@ export function drawFramePreset(ctx, width, height, campaign) {
 
 /**
  * Composite user photo and frame overlay into an offscreen canvas at target resolution,
- * then returns a high-res Blob or DataURL.
+ * applying brightness, contrast, and saturation filters, then returns a high-res Blob.
  */
 export async function exportHighResolutionPhoto({
   canvasWidth,
   canvasHeight,
   userImage,
   imageTransform,
+  filterAdjustments = { brightness: 100, contrast: 100, saturation: 100 },
   campaign,
   frameImageElement
 }) {
@@ -198,10 +198,17 @@ export async function exportHighResolutionPhoto({
   ctx.fillStyle = '#05070e';
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-  // 2. Draw user photo with transforms
+  // 2. Draw user photo with transforms and studio color grading
   if (userImage) {
     ctx.save();
-    // Center of canvas
+    
+    // Apply studio color grading filters
+    const b = filterAdjustments.brightness || 100;
+    const c = filterAdjustments.contrast || 100;
+    const s = filterAdjustments.saturation || 100;
+    ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
+
+    // Center of canvas + translation
     const centerX = canvasWidth / 2 + imageTransform.x;
     const centerY = canvasHeight / 2 + imageTransform.y;
     ctx.translate(centerX, centerY);
@@ -217,10 +224,8 @@ export async function exportHighResolutionPhoto({
 
   // 3. Draw frame overlay
   if (frameImageElement && frameImageElement.complete && frameImageElement.naturalWidth > 0) {
-    // Custom uploaded frame PNG
     ctx.drawImage(frameImageElement, 0, 0, canvasWidth, canvasHeight);
   } else {
-    // Built-in high quality procedural frame
     drawFramePreset(ctx, canvasWidth, canvasHeight, campaign);
   }
 

@@ -1,53 +1,69 @@
 :root {
-  /* Curated Harmonious Palette */
-  --bg-primary: #0a0c14;
-  --bg-secondary: #101322;
-  --bg-tertiary: #171c32;
-  --bg-card: rgba(22, 27, 49, 0.75);
-  --bg-glass: rgba(255, 255, 255, 0.04);
-  --bg-glass-strong: rgba(255, 255, 255, 0.08);
+  /* =========================================================================
+     SKEUOMORPHIC TACTILE CAMERA CHASSIS DESIGN SYSTEM
+     Light Source: 45deg Top-Left Specular Ambient Lighting
+     ========================================================================= */
 
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(99, 102, 241, 0.5);
-  --border-glow: rgba(99, 102, 241, 0.3);
+  /* Chassis & Metal Hardware */
+  --chassis-base: #141724;
+  --chassis-dark: #0b0d15;
+  --chassis-rim: rgba(255, 255, 255, 0.14);
+  --chassis-groove: rgba(0, 0, 0, 0.7);
 
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
-  --text-inverse: #090d16;
+  /* Brushed Metal Gradients */
+  --metal-plate: linear-gradient(180deg, #24293e 0%, #171b2b 40%, #111422 100%);
+  --metal-bezel: linear-gradient(135deg, #3d4566 0%, #202538 50%, #121522 100%);
+  --metal-well: linear-gradient(180deg, #090b12 0%, #101320 100%);
+  
+  /* Physical Lighting Tokens */
+  --specular-top: 1px solid rgba(255, 255, 255, 0.18);
+  --shadow-bottom: 1px solid rgba(0, 0, 0, 0.75);
+  --recessed-inner: inset 0 4px 12px rgba(0, 0, 0, 0.85), inset 0 1px 2px rgba(0, 0, 0, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.08);
+  
+  /* Tactile Physical Button Extrusion */
+  --btn-extrusion: 
+    0 1px 0 rgba(255, 255, 255, 0.2) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.6) inset,
+    0 4px 0 #090b12,
+    0 6px 12px rgba(0, 0, 0, 0.5);
 
-  --accent-primary: #6366f1; /* Indigo */
-  --accent-primary-hover: #4f46e5;
-  --accent-glow: rgba(99, 102, 241, 0.4);
+  --btn-depressed: 
+    inset 0 3px 6px rgba(0, 0, 0, 0.75),
+    inset 0 1px 2px rgba(0, 0, 0, 0.9),
+    0 1px 0 rgba(255, 255, 255, 0.08);
 
-  --accent-cyan: #06b6d4;
-  --accent-pink: #ec4899;
-  --accent-purple: #a855f7;
-  --accent-emerald: #10b981;
-  --accent-amber: #f59e0b;
+  /* Iconic Leica Crimson Shutter */
+  --shutter-red: radial-gradient(circle at 40% 30%, #fb7185 0%, #e11d48 45%, #9f1239 85%, #4c0519 100%);
+  --shutter-extrusion: 
+    0 2px 4px rgba(255, 255, 255, 0.4) inset,
+    0 -2px 4px rgba(0, 0, 0, 0.7) inset,
+    0 6px 0 #4c0519,
+    0 10px 20px rgba(225, 29, 72, 0.4),
+    0 14px 28px rgba(0, 0, 0, 0.7);
 
-  --gradient-brand: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
-  --gradient-glow: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
-  --gradient-card: linear-gradient(145deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+  --shutter-depressed:
+    inset 0 4px 8px rgba(0, 0, 0, 0.8),
+    0 1px 2px rgba(0, 0, 0, 0.5);
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
+  /* Jewel LED Indicators */
+  --led-green-glow: 0 0 12px #10b981, 0 0 24px rgba(16, 185, 129, 0.6);
+  --led-amber-glow: 0 0 12px #f59e0b, 0 0 24px rgba(245, 158, 11, 0.6);
+  --led-blue-glow: 0 0 12px #06b6d4, 0 0 24px rgba(6, 182, 212, 0.6);
 
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 16px 40px -8px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.25);
-
+  /* Typography */
   --font-display: 'Outfit', -apple-system, sans-serif;
   --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
   --font-mono: 'Space Grotesk', monospace;
 
-  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-bounce: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-full: 9999px;
 }
 
 * {
@@ -55,225 +71,288 @@
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   font-family: var(--font-body);
-  background-color: var(--bg-primary);
+  background-color: #080a11;
   color: var(--text-main);
   min-height: 100vh;
-  overflow-x: hidden;
+  /* Dark textured studio background */
   background-image: 
-    radial-gradient(at 10% 20%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
-    radial-gradient(at 90% 10%, rgba(236, 72, 153, 0.08) 0px, transparent 50%),
-    radial-gradient(at 50% 90%, rgba(6, 182, 212, 0.06) 0px, transparent 50%);
-  background-attachment: fixed;
+    radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
+    radial-gradient(circle at 10% 30%, rgba(225, 29, 72, 0.05) 0%, transparent 40%),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
 }
 
-/* Typography */
-h1, h2, h3, h4, .font-display {
-  font-family: var(--font-display);
-  letter-spacing: -0.02em;
+/* =========================================================================
+   SKEUOMORPHIC HARDWARE COMPONENTS
+   ========================================================================= */
+
+/* The Main Camera Body Chassis */
+.camera-chassis {
+  background: var(--metal-plate);
+  border-radius: var(--radius-xl);
+  border-top: var(--specular-top);
+  border-bottom: var(--shadow-bottom);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: 
+    0 20px 50px -10px rgba(0, 0, 0, 0.8),
+    0 0 0 1px #090b12,
+    0 0 30px rgba(0, 0, 0, 0.6) inset;
+  position: relative;
+}
+
+/* Corner Screws with Crosshead Etching */
+.chassis-screw {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #475569 0%, #1e293b 80%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.7),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chassis-screw::after {
+  content: '';
+  width: 8px;
+  height: 2px;
+  background: #090c15;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform: rotate(35deg);
+}
+
+/* Recessed Viewfinder Well */
+.viewfinder-recess {
+  background: #090c16;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--recessed-inner);
+  border: 1px solid rgba(0, 0, 0, 0.9);
+  padding: 10px;
+  position: relative;
+}
+
+/* Optical Glass Overlay on Viewfinder */
+.viewfinder-glass {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.viewfinder-glass::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+}
+
+/* Debossed Engraved Typography */
+.engraved-text {
+  font-family: var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7a849e;
+  text-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.14),
+    0 -1px 0 rgba(0, 0, 0, 0.85);
   font-weight: 700;
 }
 
-p {
-  color: var(--text-muted);
-  line-height: 1.6;
+.engraved-light {
+  color: #cbd5e1;
+  text-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.18),
+    0 -1px 0 rgba(0, 0, 0, 0.9);
 }
 
-/* Glassmorphism Surface */
-.glass-panel {
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  transition: transform var(--transition-normal), border-color var(--transition-normal);
-}
-
-.glass-panel:hover {
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-/* Buttons */
-.btn {
+/* Tactile Extruded Hardware Buttons */
+.btn-tactile {
+  background: linear-gradient(180deg, #2c324a 0%, #1c2032 60%, #151827 100%);
+  color: #f1f5f9;
+  border-radius: var(--radius-md);
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(0, 0, 0, 0.4);
+  box-shadow: var(--btn-extrusion);
+  font-family: var(--font-display);
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.95rem;
-  padding: 10px 20px;
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
+  padding: 10px 18px;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  text-decoration: none;
   user-select: none;
-  white-space: nowrap;
+  transition: all 0.08s ease;
+  text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.7);
 }
 
-.btn:active {
-  transform: scale(0.97);
-}
-
-.btn-primary {
-  background: var(--gradient-brand);
+.btn-tactile:hover {
+  background: linear-gradient(180deg, #363d59 0%, #22273d 60%, #181c2e 100%);
   color: #ffffff;
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
 }
 
-.btn-primary:hover {
-  box-shadow: 0 6px 25px rgba(99, 102, 241, 0.55);
-  transform: translateY(-1px);
+.btn-tactile:active, .btn-tactile.active {
+  transform: translateY(3px);
+  box-shadow: var(--btn-depressed);
+  background: linear-gradient(180deg, #131622 0%, #191c2b 100%);
+  color: #818cf8;
 }
 
-.btn-secondary {
-  background: var(--bg-glass-strong);
-  color: var(--text-main);
-  border: 1px solid var(--border-subtle);
-}
-
-.btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--text-muted);
-}
-
-.btn-ghost:hover {
-  color: var(--text-main);
-  background: var(--bg-glass);
-}
-
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 0.85rem;
-  border-radius: var(--radius-sm);
-}
-
-.btn-lg {
-  padding: 14px 28px;
-  font-size: 1.1rem;
-  border-radius: var(--radius-lg);
-}
-
-.btn-icon {
-  width: 40px;
-  height: 40px;
+/* Tactile Pushbutton - Small / Icon */
+.btn-tactile-icon {
+  width: 42px;
+  height: 42px;
   padding: 0;
   border-radius: var(--radius-md);
 }
 
-/* Badges */
-.badge {
-  display: inline-flex;
+/* Master Heavy Crimson Shutter Release Button */
+.btn-shutter {
+  position: relative;
+  background: var(--shutter-red);
+  color: #ffffff;
+  padding: 16px 28px;
+  border-radius: var(--radius-lg);
+  border: 2px solid #be123c;
+  box-shadow: var(--shutter-extrusion);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 4px 10px;
-  border-radius: var(--radius-full);
-}
-
-.badge-published {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.badge-draft {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-/* Inputs */
-.input, .select, .textarea {
-  width: 100%;
-  background: rgba(16, 19, 34, 0.8);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  color: var(--text-main);
-  padding: 10px 14px;
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.input:focus, .select:focus, .textarea:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-}
-
-/* Transparent Canvas Checkerboard */
-.checker-bg {
-  background-color: #121526;
-  background-image: 
-    linear-gradient(45deg, #1b203a 25%, transparent 25%), 
-    linear-gradient(-45deg, #1b203a 25%, transparent 25%), 
-    linear-gradient(45deg, transparent 75%, #1b203a 75%), 
-    linear-gradient(-45deg, transparent 75%, #1b203a 75%);
-  background-size: 20px 20px;
-  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-}
-
-/* Sliders */
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-full);
-  outline: none;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #ffffff;
+  justify-content: center;
+  gap: 12px;
   cursor: pointer;
-  box-shadow: 0 0 10px var(--accent-primary);
-  border: 2px solid var(--accent-primary);
-  transition: transform 0.1s ease;
+  user-select: none;
+  transition: all 0.08s cubic-bezier(0.2, 0.8, 0.2, 1);
+  text-shadow: 0 -1px 2px rgba(0, 0, 0, 0.8);
 }
 
-input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
+.btn-shutter::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 10%;
+  right: 10%;
+  height: 35%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%);
+  border-radius: var(--radius-md) var(--radius-md) 50% 50%;
+  pointer-events: none;
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+.btn-shutter:hover {
+  filter: brightness(1.08);
 }
 
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
-  50% { box-shadow: 0 0 35px rgba(99, 102, 241, 0.6); }
+.btn-shutter:active {
+  transform: translateY(4px);
+  box-shadow: var(--shutter-depressed);
+  filter: brightness(0.95);
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* Jewel LED Indicators */
+.led-jewel {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+  display: inline-block;
 }
 
-/* Responsive Utilities */
-@media (max-width: 768px) {
-  .btn-lg {
-    padding: 12px 20px;
-    font-size: 1rem;
+.led-jewel::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  width: 3px;
+  height: 3px;
+  background: #ffffff;
+  border-radius: 50%;
+  opacity: 0.8;
+}
+
+.led-green {
+  background: #10b981;
+  box-shadow: var(--led-green-glow);
+}
+
+.led-amber {
+  background: #f59e0b;
+  box-shadow: var(--led-amber-glow);
+  animation: ledPulse 1.2s infinite ease-in-out;
+}
+
+.led-blue {
+  background: #06b6d4;
+  box-shadow: var(--led-blue-glow);
+}
+
+@keyframes ledPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Knurled Rotary Dial Slider */
+.knurled-track {
+  position: relative;
+  height: 48px;
+  background: #0d101a;
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.8), inset 0 -1px 1px rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  overflow: hidden;
+}
+
+/* Dial Tick Marks */
+.dial-ticks {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.08) 0px,
+    rgba(255, 255, 255, 0.08) 1px,
+    transparent 1px,
+    transparent 12px
+  );
+  pointer-events: none;
+}
+
+/* Analog VU Meter / Segment Gauge (Admin Analytics) */
+.analog-gauge {
+  background: #0a0d16;
+  border-radius: var(--radius-md);
+  box-shadow: var(--recessed-inner);
+  border: 1px solid rgba(0, 0, 0, 0.9);
+  padding: 16px;
+  position: relative;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .btn-shutter {
+    padding: 14px 20px;
+    font-size: 1.05rem;
   }
 }
