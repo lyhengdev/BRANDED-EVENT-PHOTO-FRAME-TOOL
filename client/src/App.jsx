@@ -4,8 +4,9 @@ import CanvasEditor from './components/CanvasEditor';
 import AdminDashboard from './components/AdminDashboard';
 import CreateCampaignModal from './components/CreateCampaignModal';
 import QRCodeModal from './components/QRCodeModal';
+import ConsoleAuthModal from './components/ConsoleAuthModal';
+import { sound } from './utils/soundEffects';
 
-// Fallback seed campaigns in case API server is starting up
 const DEFAULT_CAMPAIGNS = [
   {
     id: 'camp_mtf2026',
@@ -79,9 +80,34 @@ export default function App() {
   const [campaigns, setCampaigns] = useState(DEFAULT_CAMPAIGNS);
   const [currentCampaign, setCurrentCampaign] = useState(DEFAULT_CAMPAIGNS[0]);
   const [currentView, setCurrentView] = useState('attendee'); // 'attendee' | 'admin'
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [selectedQRCampaign, setSelectedQRCampaign] = useState(null);
+
+  // Check existing session token on startup
+  useEffect(() => {
+    const savedToken = localStorage.getItem('framecraft_admin_token');
+    if (savedToken) {
+      fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${savedToken}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.valid) {
+            setIsAuthenticated(true);
+          } else {
+            localStorage.removeItem('framecraft_admin_token');
+          }
+        })
+        .catch(() => {
+          // If offline/error, retain local session if present
+          setIsAuthenticated(true);
+        });
+    }
+  }, []);
 
   // Fetch campaigns from backend
   const fetchCampaigns = async () => {
@@ -91,7 +117,6 @@ export default function App() {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           setCampaigns(data);
-          // Check URL query param ?f=slug
           const params = new URLSearchParams(window.location.search);
           const slugParam = params.get('f');
           if (slugParam) {
@@ -117,7 +142,6 @@ export default function App() {
   const handleSelectCampaign = (camp) => {
     setCurrentCampaign(camp);
     setCurrentView('attendee');
-    // Update URL parameter without reload
     const url = new URL(window.location);
     url.searchParams.set('f', camp.slug);
     window.history.pushState({}, '', url);
@@ -129,7 +153,7 @@ export default function App() {
   };
 
   const handleDeleteCampaign = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this campaign?')) return;
+    if (!window.confirm('Confirm decommissioning of this event campaign channel?')) return;
     try {
       await fetch(`/api/campaigns/${id}`, { method: 'DELETE' });
       const nextList = campaigns.filter(c => c.id !== id);
@@ -142,6 +166,27 @@ export default function App() {
     }
   };
 
+  const handleRequestAdmin = () => {
+    if (isAuthenticated) {
+      setCurrentView('admin');
+    } else {
+      setIsAuthModalOpen(true);
+    }
+  };
+
+  const handleAuthSuccess = () => {
+    setIsAuthenticated(true);
+    setIsAuthModalOpen(false);
+    setCurrentView('admin');
+  };
+
+  const handleLogout = () => {
+    sound.playMechanicalClick();
+    localStorage.removeItem('framecraft_admin_token');
+    setIsAuthenticated(false);
+    setCurrentView('attendee');
+  };
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar
@@ -149,6 +194,9 @@ export default function App() {
         setView={setCurrentView}
         currentCampaign={currentCampaign}
         onNewCampaign={() => setIsCreateModalOpen(true)}
+        isAuthenticated={isAuthenticated}
+        onLogout={handleLogout}
+        onRequestAdmin={handleRequestAdmin}
       />
 
       <main style={{ flex: 1 }}>
@@ -168,6 +216,13 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Operator Security Clearance Modal */}
+      <ConsoleAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+      />
 
       {/* Create Campaign Modal */}
       <CreateCampaignModal

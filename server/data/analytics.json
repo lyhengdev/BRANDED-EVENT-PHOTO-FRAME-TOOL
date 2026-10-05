@@ -1,130 +1,175 @@
 {
+  "camp_1791191359730": {
+    "visits": 28,
+    "photosUploaded": 1,
+    "downloads": 1,
+    "history": [
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:09:19.796Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:09:19.818Z"
+      },
+      {
+        "event": "upload",
+        "timestamp": "2026-10-05T09:09:39.022Z"
+      },
+      {
+        "event": "download",
+        "timestamp": "2026-10-05T09:09:57.592Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:10:21.891Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:10:43.027Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:10:43.033Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:10:51.462Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:10:51.470Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:10:53.216Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:10:53.218Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:10:55.512Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:10:55.515Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:10:58.116Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:10:58.117Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:11:00.301Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:11:00.302Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:11:22.736Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:11:22.738Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:11:46.211Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:11:46.213Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:11:53.978Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:11:53.994Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:11:56.141Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:11:56.143Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:12:08.995Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:12:30.512Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:14:38.608Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:14:38.676Z"
+      },
+      {
+        "event": "visit",
+        "timestamp": "2026-10-05T09:14:38.698Z"
+      }
+    ]
+  },
   "camp_mtf2026": {
-    "visits": 5296,
-    "photosUploaded": 2141,
-    "downloads": 1851,
+    "visits": 10,
+    "photosUploaded": 0,
+    "downloads": 0,
     "history": [
       {
         "event": "visit",
-        "timestamp": "2026-10-05T09:02:17.254Z"
+        "timestamp": "2026-10-05T09:12:08.936Z"
       },
       {
         "event": "visit",
-        "timestamp": "2026-10-05T09:02:17.270Z"
+        "timestamp": "2026-10-05T09:12:08.979Z"
       },
       {
         "event": "visit",
-        "timestamp": "2026-10-05T09:02:23.970Z"
-      },
-      {
-        "event": "upload",
-        "timestamp": "2026-10-05T09:02:33.572Z"
+        "timestamp": "2026-10-05T09:12:30.451Z"
       },
       {
         "event": "visit",
-        "timestamp": "2026-10-05T09:03:01.035Z"
+        "timestamp": "2026-10-05T09:12:30.454Z"
       },
       {
         "event": "visit",
-        "timestamp": "2026-10-05T09:03:01.043Z"
+        "timestamp": "2026-10-05T09:14:38.560Z"
       },
       {
         "event": "visit",
-        "timestamp": "2026-10-05T09:03:12.317Z"
+        "timestamp": "2026-10-05T09:14:38.572Z"
       },
       {
         "event": "visit",
-        "timestamp": "2026-10-05T09:03:12.319Z"
-      },
-      {
-        "event": "download",
-        "timestamp": "2026-10-05T09:03:28.106Z"
+        "timestamp": "2026-10-05T09:14:38.577Z"
       },
       {
         "event": "visit",
-        "timestamp": "2026-10-05T09:07:02.787Z"
+        "timestamp": "2026-10-05T09:14:38.583Z"
       },
       {
         "event": "visit",
-        "timestamp": "2026-10-05T09:07:02.810Z"
+        "timestamp": "2026-10-05T09:14:38.626Z"
       },
       {
         "event": "visit",
-        "timestamp": "2026-10-05T09:07:25.889Z"
-      },
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:07:25.898Z"
-      },
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:07:48.899Z"
-      },
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:07:48.942Z"
-      },
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:07:54.611Z"
-      },
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:07:58.648Z"
-      },
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:07:58.654Z"
-      }
-    ]
-  },
-  "camp_summerbeats": {
-    "visits": 3413,
-    "photosUploaded": 1680,
-    "downloads": 1420,
-    "history": [
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:02:22.326Z"
-      },
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:04:56.390Z"
-      },
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:07:53.886Z"
-      }
-    ]
-  },
-  "camp_aisummit": {
-    "visits": 2894,
-    "photosUploaded": 1221,
-    "downloads": 981,
-    "history": [
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:04:57.745Z"
-      },
-      {
-        "event": "upload",
-        "timestamp": "2026-10-05T09:05:11.079Z"
-      },
-      {
-        "event": "download",
-        "timestamp": "2026-10-05T09:05:15.347Z"
-      },
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:07:02.913Z"
-      },
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:07:25.959Z"
-      },
-      {
-        "event": "visit",
-        "timestamp": "2026-10-05T09:07:48.973Z"
+        "timestamp": "2026-10-05T09:14:38.638Z"
       }
     ]
   }

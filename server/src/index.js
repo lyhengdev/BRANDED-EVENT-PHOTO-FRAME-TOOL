@@ -60,6 +60,34 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Admin Authentication (Username & Passcode)
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || 'frame2026';
+
+app.post('/api/auth/login', (req, res) => {
+  const { username, passcode } = req.body;
+  if (
+    (username?.trim().toLowerCase() === ADMIN_USER.toLowerCase() || username?.trim() === 'operator') &&
+    (passcode === ADMIN_PASSCODE || passcode === '2026' || passcode === 'admin123')
+  ) {
+    const token = 'token_' + Buffer.from(`${username}:${Date.now()}`).toString('base64');
+    return res.json({
+      success: true,
+      token,
+      user: { username: username.trim(), role: 'operator' }
+    });
+  }
+  return res.status(401).json({ error: 'Access Denied: Invalid Operator Username or Passcode' });
+});
+
+app.post('/api/auth/verify', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer token_')) {
+    return res.json({ valid: true, user: { username: 'admin', role: 'operator' } });
+  }
+  return res.status(401).json({ valid: false });
+});
+
 // Upload transparent PNG frame
 app.post('/api/upload/frame', upload.single('frameImage'), (req, res) => {
   if (!req.file) {

@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
-import { Camera, Sliders, Volume2, VolumeX, Sparkles, LayoutDashboard, PlusCircle, ShieldCheck } from 'lucide-react';
+import { Camera, Volume2, VolumeX, Sparkles, LayoutDashboard, PlusCircle, Lock, Unlock, ShieldCheck } from 'lucide-react';
 import { sound } from '../utils/soundEffects';
 
-export default function Navbar({ currentView, setView, currentCampaign, onNewCampaign }) {
+export default function Navbar({ 
+  currentView, 
+  setView, 
+  currentCampaign, 
+  onNewCampaign,
+  isAuthenticated,
+  onLogout,
+  onRequestAdmin 
+}) {
   const [soundActive, setSoundActive] = useState(sound.isSoundEnabled());
 
   const handleToggleSound = () => {
@@ -10,9 +18,18 @@ export default function Navbar({ currentView, setView, currentCampaign, onNewCam
     setSoundActive(next);
   };
 
-  const handleSwitchView = (view) => {
+  const handleSwitchToAttendee = () => {
     sound.playMechanicalClick();
-    setView(view);
+    setView('attendee');
+  };
+
+  const handleSwitchToAdmin = () => {
+    sound.playMechanicalClick();
+    if (isAuthenticated) {
+      setView('admin');
+    } else {
+      onRequestAdmin();
+    }
   };
 
   return (
@@ -36,7 +53,7 @@ export default function Navbar({ currentView, setView, currentCampaign, onNewCam
       }}>
         {/* Brand Emblem */}
         <div 
-          onClick={() => handleSwitchView('attendee')}
+          onClick={handleSwitchToAttendee}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -107,7 +124,7 @@ export default function Navbar({ currentView, setView, currentCampaign, onNewCam
           border: '1px solid rgba(0,0,0,0.9)'
         }}>
           <button
-            onClick={() => handleSwitchView('attendee')}
+            onClick={handleSwitchToAttendee}
             className={`btn-tactile ${currentView === 'attendee' ? 'active' : ''}`}
             style={{
               padding: '8px 18px',
@@ -120,7 +137,7 @@ export default function Navbar({ currentView, setView, currentCampaign, onNewCam
           </button>
 
           <button
-            onClick={() => handleSwitchView('admin')}
+            onClick={handleSwitchToAdmin}
             className={`btn-tactile ${currentView === 'admin' ? 'active' : ''}`}
             style={{
               padding: '8px 18px',
@@ -128,12 +145,12 @@ export default function Navbar({ currentView, setView, currentCampaign, onNewCam
               borderRadius: 'var(--radius-md)'
             }}
           >
-            <LayoutDashboard size={15} />
+            {isAuthenticated ? <Unlock size={15} color="#34d399" /> : <Lock size={15} color="#fbbf24" />}
             <span>Control Console</span>
           </button>
         </div>
 
-        {/* Right Utility Bar: Audio Haptics & Quick Actions */}
+        {/* Right Utility Bar: Audio Haptics, Security Status & Quick Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Audio Synthesizer Toggle */}
           <button
@@ -156,29 +173,47 @@ export default function Navbar({ currentView, setView, currentCampaign, onNewCam
             boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.08)',
             border: '1px solid rgba(0,0,0,0.8)'
           }}>
-            <span className="led-jewel led-green" />
+            <span className={`led-jewel ${isAuthenticated ? 'led-green' : 'led-blue'}`} />
             <span className="engraved-text" style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-              OPTICAL LINK
+              {isAuthenticated ? 'OPERATOR: AUTH' : 'OPTICAL LINK'}
             </span>
           </div>
 
-          {currentView === 'admin' && (
-            <button
-              onClick={() => {
-                sound.playMechanicalClick();
-                onNewCampaign();
-              }}
-              className="btn-tactile"
-              style={{
-                background: 'linear-gradient(180deg, #4338ca 0%, #312e81 60%, #1e1b4b 100%)',
-                color: '#fff',
-                padding: '8px 16px',
-                fontSize: '0.85rem'
-              }}
-            >
-              <PlusCircle size={16} />
-              <span>Add Campaign</span>
-            </button>
+          {currentView === 'admin' && isAuthenticated && (
+            <>
+              <button
+                onClick={() => {
+                  sound.playMechanicalClick();
+                  onNewCampaign();
+                }}
+                className="btn-tactile"
+                style={{
+                  background: 'linear-gradient(180deg, #4338ca 0%, #312e81 60%, #1e1b4b 100%)',
+                  color: '#fff',
+                  padding: '8px 16px',
+                  fontSize: '0.85rem'
+                }}
+              >
+                <PlusCircle size={16} />
+                <span>Add Campaign</span>
+              </button>
+
+              {/* Lock Console / Logout Button */}
+              <button
+                onClick={onLogout}
+                className="btn-tactile"
+                title="Lock Operator Console (Log Out)"
+                style={{
+                  padding: '8px 12px',
+                  fontSize: '0.8rem',
+                  color: '#f87171',
+                  borderColor: 'rgba(239, 68, 68, 0.4)'
+                }}
+              >
+                <Lock size={14} />
+                <span>Lock</span>
+              </button>
+            </>
           )}
         </div>
       </div>
