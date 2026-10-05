@@ -5,13 +5,40 @@ import AdminDashboard from './components/AdminDashboard';
 import CreateCampaignModal from './components/CreateCampaignModal';
 import QRCodeModal from './components/QRCodeModal';
 import ConsoleAuthModal from './components/ConsoleAuthModal';
-import { Sparkles, PlusCircle } from 'lucide-react';
+import { Sparkles, PlusCircle, Aperture } from 'lucide-react';
 import { sound } from './utils/soundEffects';
 
+// Stale-While-Revalidate: Instant synchronous cache retrieval from localStorage
+function getCachedCampaigns() {
+  try {
+    const raw = localStorage.getItem('framecraft_cached_campaigns');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
 export default function App() {
-  const [campaigns, setCampaigns] = useState([]);
-  const [currentCampaign, setCurrentCampaign] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const cachedList = getCachedCampaigns();
+  const [campaigns, setCampaigns] = useState(cachedList);
+
+  // Synchronously compute initial campaign for 0ms instantaneous display
+  const getInitialCampaign = () => {
+    if (cachedList.length === 0) return null;
+    const params = new URLSearchParams(window.location.search);
+    const slugParam = params.get('f');
+    if (slugParam) {
+      const match = cachedList.find(c => c.slug === slugParam);
+      if (match) return match;
+    }
+    return cachedList[0];
+  };
+
+  const [currentCampaign, setCurrentCampaign] = useState(getInitialCampaign);
+  // If we already have a cached campaign, don't show the initial loader
+  const [loading, setLoading] = useState(cachedList.length === 0);
   const [currentView, setCurrentView] = useState('attendee'); // 'attendee' | 'admin'
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -42,17 +69,30 @@ export default function App() {
     }
   }, []);
 
-  // Fetch campaigns from MongoDB backend
+  // Fetch campaigns from backend (Vercel Edge cached + background revalidation)
   const fetchCampaigns = async () => {
     try {
-      setLoading(true);
-      const res = await fetch('/api/campaigns');
-      if (res.ok) {
-        const data = await res.json();
+      if (!currentCampaign) {
+        setLoading(true);
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const slugParam = params.get('f');
+
+      // Fetch campaign list (and targeted slug if present) in parallel
+      const [listRes, singleRes] = await Promise.all([
+        fetch('/api/campaigns'),
+        slugParam ? fetch(`/api/campaigns/${slugParam}`).catch(() => null) : Promise.resolve(null)
+      ]);
+
+      if (listRes.ok) {
+        const data = await listRes.json();
         if (Array.isArray(data)) {
           setCampaigns(data);
-          const params = new URLSearchParams(window.location.search);
-          const slugParam = params.get('f');
+          try {
+            localStorage.setItem('framecraft_cached_campaigns', JSON.stringify(data));
+          } catch {}
+
           if (slugParam) {
             const found = data.find(c => c.slug === slugParam);
             if (found) {
@@ -61,11 +101,19 @@ export default function App() {
               return;
             }
           }
-          setCurrentCampaign(data[0] || null);
+          if (data.length > 0 && !currentCampaign) {
+            setCurrentCampaign(data[0]);
+          }
+        }
+      } else if (singleRes && singleRes.ok) {
+        const singleData = await singleRes.json();
+        if (singleData && singleData.id) {
+          setCurrentCampaign(singleData);
+          setCampaigns([singleData]);
         }
       }
     } catch (e) {
-      console.error('Failed to load campaigns from MongoDB Atlas:', e);
+      console.error('Failed to load campaigns:', e);
     } finally {
       setLoading(false);
     }
@@ -94,6 +142,9 @@ export default function App() {
       await fetch(`/api/campaigns/${id}`, { method: 'DELETE' });
       const nextList = campaigns.filter(c => c.id !== id);
       setCampaigns(nextList);
+      try {
+        localStorage.setItem('framecraft_cached_campaigns', JSON.stringify(nextList));
+      } catch {}
       if (currentCampaign?.id === id) {
         setCurrentCampaign(nextList[0] || null);
       }
@@ -143,7 +194,50 @@ export default function App() {
             campaigns={campaigns}
             onSelectCampaign={handleSelectCampaign}
           />
-        ) : currentView === 'attendee' && !currentCampaign ? (
+        ) : currentView === 'attendee' && loading ? (
+          /* High-End Camera Sensor Calibration Initializer */
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '65vh',
+            padding: 24,
+            textAlign: 'center'
+          }}>
+            <div className="camera-chassis" style={{ maxWidth: 420, padding: '36px 20px', position: 'relative' }}>
+              <div className="chassis-screw" style={{ top: 10, left: 10 }} />
+              <div className="chassis-screw" style={{ top: 10, right: 10 }} />
+              <div className="chassis-screw" style={{ bottom: 10, left: 10 }} />
+              <div className="chassis-screw" style={{ bottom: 10, right: 10 }} />
+
+              <div style={{
+                width: 68,
+                height: 68,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle at 35% 35%, #0284c7 0%, #0369a1 60%, #082f49 100%)',
+                border: '2px solid rgba(56, 189, 248, 0.4)',
+                boxShadow: '0 0 25px rgba(56, 189, 248, 0.5), inset 0 2px 4px rgba(255,255,255,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px'
+              }}>
+                <Aperture size={32} color="#ffffff" className="spin-slow" />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
+                <span className="led-jewel led-amber" />
+                <h2 className="engraved-light" style={{ fontSize: '1.15rem' }}>
+                  INITIALIZING OPTICAL SENSOR
+                </h2>
+              </div>
+              <p className="engraved-text" style={{ fontSize: '0.65rem', color: '#64748b' }}>
+                CALIBRATING EVENT FRAME CHANNEL...
+              </p>
+            </div>
+          </div>
+        ) : currentView === 'attendee' && !currentCampaign && !loading ? (
           <div style={{
             display: 'flex',
             flexDirection: 'column',
@@ -211,22 +305,26 @@ export default function App() {
         onSuccess={handleAuthSuccess}
       />
 
-      {/* Create Campaign Modal */}
+      {/* Create New Campaign Channel Modal */}
       <CreateCampaignModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={(newCamp) => {
-          setCampaigns(prev => [newCamp, ...prev]);
+          const updated = [newCamp, ...campaigns];
+          setCampaigns(updated);
+          try {
+            localStorage.setItem('framecraft_cached_campaigns', JSON.stringify(updated));
+          } catch {}
           setCurrentCampaign(newCamp);
           setCurrentView('attendee');
         }}
       />
 
-      {/* QR Code Generator Modal */}
+      {/* Event QR Code Deployment Modal */}
       <QRCodeModal
-        campaign={selectedQRCampaign}
         isOpen={isQRModalOpen}
         onClose={() => setIsQRModalOpen(false)}
+        campaign={selectedQRCampaign}
       />
     </div>
   );

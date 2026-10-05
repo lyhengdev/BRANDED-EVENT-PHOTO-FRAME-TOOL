@@ -471,3 +471,12 @@ input[type="range"]::-moz-range-thumb {
     display: none !important;
   }
 }
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-slow {
+  animation: spinSlow 5s linear infinite;
+}

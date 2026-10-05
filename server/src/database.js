@@ -33,7 +33,9 @@ export async function connectDB(mongoUri) {
 
     connectionPromise = mongoose.connect(uri, {
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 20000,
+      autoIndex: false,
     });
 
     cachedConnection = await connectionPromise;
@@ -48,26 +50,28 @@ export async function connectDB(mongoUri) {
 export const db = {
   async getCampaigns() {
     await connectDB();
-    const list = await Campaign.find({ status: { $ne: 'archived' } }).sort({ createdAt: -1 });
-    return list.map(c => c.toJSON());
+    const list = await Campaign.find({ status: { $ne: 'archived' } })
+      .sort({ createdAt: -1 })
+      .lean();
+    return list.map(c => ({ ...c, id: c._id.toString() }));
   },
 
   async getCampaignById(idOrSlug) {
     await connectDB();
     let doc = null;
     if (mongoose.Types.ObjectId.isValid(idOrSlug)) {
-      doc = await Campaign.findById(idOrSlug);
+      doc = await Campaign.findById(idOrSlug).lean();
     }
     if (!doc) {
-      doc = await Campaign.findOne({ slug: idOrSlug.toLowerCase() });
+      doc = await Campaign.findOne({ slug: idOrSlug.toLowerCase() }).lean();
     }
-    return doc ? doc.toJSON() : null;
+    return doc ? { ...doc, id: doc._id.toString() } : null;
   },
 
   async getCampaignBySlug(slug) {
     await connectDB();
-    const doc = await Campaign.findOne({ slug: slug.toLowerCase() });
-    return doc ? doc.toJSON() : null;
+    const doc = await Campaign.findOne({ slug: slug.toLowerCase() }).lean();
+    return doc ? { ...doc, id: doc._id.toString() } : null;
   },
 
   async createCampaign(campaignData) {
