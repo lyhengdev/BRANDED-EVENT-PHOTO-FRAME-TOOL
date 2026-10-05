@@ -101,10 +101,10 @@ apiRouter.post('/upload/frame', upload.single('frameImage'), (req, res) => {
   });
 });
 
-// List all campaigns (Edge CDN cached for lightning-fast loads)
+// List all campaigns (Real-time fresh from database)
 apiRouter.get('/campaigns', async (req, res, next) => {
   try {
-    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     const campaigns = await db.getCampaigns();
     res.json(campaigns);
   } catch (err) {
@@ -115,7 +115,7 @@ apiRouter.get('/campaigns', async (req, res, next) => {
 // Get campaign by slug or ID
 apiRouter.get('/campaigns/:idOrSlug', async (req, res, next) => {
   try {
-    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     const { idOrSlug } = req.params;
     let campaign = await db.getCampaignBySlug(idOrSlug);
     if (!campaign) {

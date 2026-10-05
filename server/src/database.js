@@ -139,12 +139,15 @@ export const db = {
 
   async deleteCampaign(id) {
     await connectDB();
-    let filter = { _id: id };
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      filter = { slug: id };
-    }
+    if (!id || id === 'undefined' || id === 'null') return false;
 
-    const deleted = await Campaign.findOneAndDelete(filter);
+    let deleted = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      deleted = await Campaign.findByIdAndDelete(id);
+    }
+    if (!deleted) {
+      deleted = await Campaign.findOneAndDelete({ slug: String(id).toLowerCase() });
+    }
     if (!deleted) return false;
 
     await Analytics.deleteMany({ campaignId: deleted._id.toString() });

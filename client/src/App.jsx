@@ -136,20 +136,47 @@ export default function App() {
     setIsQRModalOpen(true);
   };
 
-  const handleDeleteCampaign = async (id) => {
+  const handleDeleteCampaign = async (target) => {
+    const idOrSlug = target?.id || target?._id || target?.slug || target;
+    if (!idOrSlug) return;
+
     if (!window.confirm('Confirm decommissioning of this event campaign channel?')) return;
+
+    sound.playMechanicalClick();
     try {
-      await fetch(`/api/campaigns/${id}`, { method: 'DELETE' });
-      const nextList = campaigns.filter(c => c.id !== id);
+      const res = await fetch(`/api/campaigns/${encodeURIComponent(idOrSlug)}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Server error (${res.status})`);
+      }
+
+      // Filter out deleted item by any matching identifier
+      const nextList = campaigns.filter(c => 
+        c.id !== idOrSlug && 
+        c._id !== idOrSlug && 
+        c.slug !== idOrSlug &&
+        (target?.slug ? c.slug !== target.slug : true)
+      );
+
       setCampaigns(nextList);
       try {
         localStorage.setItem('framecraft_cached_campaigns', JSON.stringify(nextList));
       } catch {}
-      if (currentCampaign?.id === id) {
+
+      if (
+        currentCampaign?.id === idOrSlug ||
+        currentCampaign?._id === idOrSlug ||
+        currentCampaign?.slug === idOrSlug ||
+        (target?.slug && currentCampaign?.slug === target.slug)
+      ) {
         setCurrentCampaign(nextList[0] || null);
       }
     } catch (err) {
       console.error('Delete error:', err);
+      alert('Decommission failed: ' + err.message);
     }
   };
 

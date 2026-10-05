@@ -42,9 +42,9 @@ export default function AdminDashboard({
     onOpenQR(camp);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (camp) => {
     sound.playMechanicalClick();
-    onDeleteCampaign(id);
+    onDeleteCampaign(camp);
   };
 
   return (
@@ -325,16 +325,16 @@ export default function AdminDashboard({
                 </button>
 
                 <button
-                  onClick={() => handleCopy(camp.slug, camp.id)}
+                  onClick={() => handleCopy(camp.slug, camp.id || camp._id)}
                   className="btn-tactile"
                   style={{ padding: '8px 14px', fontSize: '0.8rem' }}
                 >
-                  {copiedId === camp.id ? <Check size={14} color="#34d399" /> : <Copy size={14} />}
-                  <span>{copiedId === camp.id ? 'Copied' : 'Link'}</span>
+                  {copiedId === (camp.id || camp._id) ? <Check size={14} color="#34d399" /> : <Copy size={14} />}
+                  <span>{copiedId === (camp.id || camp._id) ? 'Copied' : 'Link'}</span>
                 </button>
 
                 <button
-                  onClick={() => handleDelete(camp.id)}
+                  onClick={() => handleDelete(camp)}
                   className="btn-tactile"
                   style={{ padding: '8px 10px', color: '#ef4444' }}
                   title="Decommission Campaign"
